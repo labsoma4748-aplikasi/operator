@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KADA Telepon Santri</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<style>
+:root{--ink:#0e1d18;--em:#0b7a5a;--em2:#096449;--bg:#f5f6f4;--tx:#14201c;--mu:#6b7873;--ln:#e5e9e6;--ok:#16a36a;--wn:#f0a020;--rd:#e5484d;--r:14px;--sh:0 1px 2px #0e1d180d,0 4px 14px #0e1d180a}
+*{box-sizing:border-box}body{margin:0;font:14.5px/1.5 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--tx);-webkit-font-smoothing:antialiased}
+h1,h2,h3{letter-spacing:-.015em}h2{margin:0;font-size:18px}.mu{color:var(--mu);font-size:13px}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.row>*{flex:1}.row>button{flex:0 0 auto}
+input,select,textarea{width:100%;padding:10px 12px;border:1px solid var(--ln);border-radius:10px;background:#fff;font:inherit;color:inherit;outline:none}input:focus,select:focus{border-color:var(--em);box-shadow:0 0 0 3px #0b7a5a22}
+label.mu{display:block;margin-top:12px}label.mu input,label.mu select{margin-top:5px;color:var(--tx);font-size:14.5px}
+button{border:0;border-radius:10px;padding:10px 16px;font:600 14px Inter,system-ui,sans-serif;cursor:pointer;background:var(--em);color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:7px;transition:background .15s}button:hover{background:var(--em2)}
+button.sec{background:#fff;color:var(--tx);border:1px solid var(--ln)}button.sec:hover{background:#f0f3f1}button.bad{background:var(--rd)}button.bad:hover{background:#c93a3f}button.sm{padding:6px 11px;font-size:13px}button:disabled{opacity:.4;cursor:not-allowed}
+.ic{width:19px;height:19px;flex:none}
+.side{position:fixed;inset:0 auto 0 0;width:240px;background:var(--ink);color:#cfe0d9;display:flex;flex-direction:column;padding:20px 14px;z-index:5}
+.brand{display:flex;gap:11px;align-items:center;padding:2px 6px}.logo{width:38px;height:38px;border-radius:11px;background:var(--em);display:grid;place-items:center;color:#fff;flex:none}.brand b{color:#fff;font-size:17px;display:block;line-height:1.1}.brand small{color:#7f9a90;font-size:12px}
+.side nav{display:flex;flex-direction:column;gap:3px;margin-top:26px;flex:1}.side nav button{background:none;color:#a9bfb6;justify-content:flex-start;gap:12px;padding:10px 12px;font-weight:500}.side nav button:hover{background:#ffffff12}.side nav button.on{background:#ffffff1f;color:#fff}
+.me{display:flex;gap:10px;align-items:center;padding:10px;border-radius:12px;background:#ffffff0f}.me>div{flex:1;min-width:0}.me b{color:#fff;font-size:13px;display:block;overflow:hidden;text-overflow:ellipsis}.me small{color:#7f9a90}.me button{background:none;padding:6px;color:#a9bfb6}.me button:hover{background:none;color:#fff}
+.av{width:34px;height:34px;border-radius:50%;background:#d9efe6;color:var(--em);display:grid;place-items:center;font-weight:700;flex:none}
+main{margin-left:240px;padding:30px 34px 48px;max-width:1220px}.hd{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:22px}.hd h1{margin:0;font-size:25px}.hd p{margin:2px 0 0;color:var(--mu)}.sec-t{font-size:15px;margin:28px 0 12px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.kpi,.stats>div:not(.kpi){background:#fff;border:1px solid var(--ln);border-radius:var(--r);padding:16px;box-shadow:var(--sh)}.kpi{display:flex;gap:14px;align-items:center}
+.kpi b,.stats>div:not(.kpi) b{font-size:26px;line-height:1.1;display:block;font-variant-numeric:tabular-nums}.kpi small,.stats>div:not(.kpi) span{color:var(--mu);font-size:13px}
+.kic{width:44px;height:44px;border-radius:12px;display:grid;place-items:center}.kic.r{background:#fde8e8;color:var(--rd)}.kic.g{background:#dff5ea;color:var(--ok)}.kic.b{background:#e3edfb;color:#2f6fd0}.kic.n{background:#eceee9;color:#4c5a54}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}.card{background:#fff;border:1px solid var(--ln);border-radius:var(--r);padding:16px;box-shadow:var(--sh)}.fg{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.ph{padding:18px}.ph .top{display:flex;align-items:center;gap:10px;margin-bottom:6px}.ph .top b{flex:1;font-size:15px}.who{font-weight:600}
+.pill{padding:3px 10px;border-radius:99px;font-size:12px;font-weight:600;background:#dff5ea;color:#0d7a4d;white-space:nowrap}.ph.on .pill{background:#fde8e8;color:#c0282d}.ph.warn .pill{background:#fdf0d5;color:#9a6200}.ph.over .pill{background:var(--rd);color:#fff}.ph.off .pill{background:#eceee9;color:#5d6a65}.ph.off{opacity:.8}
+.t{font-size:38px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.1;margin:10px 0}.ph.warn .t{color:#b97500}.ph.over .t{color:var(--rd);animation:bl 1s infinite}@keyframes bl{50%{opacity:.4}}
+.bar{height:6px;border-radius:9px;background:#e8ece9;overflow:hidden}.bar i{display:block;height:100%;width:0;background:var(--em);border-radius:9px;transition:width .9s linear}.ph.warn .bar i{background:var(--wn)}.ph.over .bar i{background:var(--rd)}
+table{width:100%;border-collapse:separate;border-spacing:0;background:#fff;border:1px solid var(--ln);border-radius:var(--r);overflow:hidden;font-size:14px;box-shadow:var(--sh)}th,td{padding:11px 14px;border-bottom:1px solid var(--ln);text-align:left}th{background:#f7f9f7;color:var(--mu);font-weight:600;font-size:12.5px}tr:last-child td{border-bottom:0}.sc{overflow-x:auto}
+.tag{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:600;background:#eceee9;color:#4c5a54}.tag.r{background:#fde8e8;color:#c0282d}.tag.g{background:#dff5ea;color:#0d7a4d}.tag.b{background:#e3edfb;color:#2f6fd0}
+.md{position:fixed;inset:0;background:#0b1511a6;backdrop-filter:blur(3px);display:flex;align-items:flex-end;justify-content:center;z-index:40}.md>div{background:#fff;width:100%;max-width:480px;max-height:92vh;overflow:auto;border-radius:20px 20px 0 0;padding:22px;box-shadow:0 20px 60px #0004;animation:up .2s ease}@keyframes up{from{transform:translateY(18px);opacity:0}}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}.chips button{background:#fff;color:var(--tx);border:1px solid var(--ln)}.chips button.on{background:var(--em);color:#fff;border-color:var(--em)}
+button.pick{display:block;width:100%;text-align:left;background:#fff;color:var(--tx);border:1px solid var(--ln);margin-top:6px;font-weight:500}button.pick:hover{background:#eef6f2;border-color:var(--em)}
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 18px;border-radius:12px;z-index:50;display:none;max-width:90%;box-shadow:0 10px 30px #0004}
+.lg{display:grid;grid-template-columns:1.1fr 1fr;min-height:100vh}.lgL{background:radial-gradient(circle at 20% 10%,#14664f,#0e1d18 62%);color:#fff;padding:52px;display:flex;flex-direction:column;justify-content:space-between}.lgL h1{font-size:40px;line-height:1.1;margin:0 0 14px;max-width:430px}.lgL p{color:#a9c4b9;max-width:380px;margin:0}.lgR{display:grid;place-items:center;padding:24px}.lgF{width:100%;max-width:360px}.lgF h2{font-size:26px}.lgF input{padding:12px}.lgF button{width:100%;padding:12px;margin-top:6px}
+.tm{position:fixed;inset:0;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;color:#fff;background:radial-gradient(circle at 50% 0,#14664f,#0e1d18 72%)}.tm h1{font-size:34px;margin:8px 0 2px}.tm h3{font-weight:500;opacity:.8;margin:2px 0}.tm .pill{background:#ffffff26;color:#fff}
+.tm .big{font-size:min(30vw,150px);font-weight:700;letter-spacing:-.04em;font-variant-numeric:tabular-nums;line-height:1;margin:14px 0}.tm .bar{width:min(520px,80vw);margin:6px 0 14px;background:#ffffff26}.tm .bar i{background:#5ee0b0}
+.tm.warn{background:radial-gradient(circle at 50% 0,#a8690a,#2b1c05 75%)}.tm.over{animation:fl 1s infinite}@keyframes fl{0%,100%{background:#a8201f}50%{background:#5e0f0f}}
+.xl{position:fixed;right:10px;bottom:10px;width:34px;height:34px;padding:0;background:transparent;color:#fff;opacity:.16;border-radius:50%}.xl:hover{background:#ffffff22;opacity:.5}
+@media(min-width:640px){.md{align-items:center}.md>div{border-radius:20px}}
+@media(max-width:860px){.side{inset:auto 0 0 0;width:auto;flex-direction:row;padding:4px 6px calc(4px + env(safe-area-inset-bottom));border-top:1px solid #ffffff1a}.brand,.me{display:none}.side nav{flex-direction:row;margin:0;gap:0}.side nav button{flex:1;flex-direction:column;gap:3px;font-size:10.5px;padding:8px 2px;justify-content:center}
+main{margin:0;padding:20px 14px 96px}.stats{grid-template-columns:repeat(2,1fr)}.kpi b{font-size:22px}#toast{bottom:90px}.lg{grid-template-columns:1fr}.lgL{padding:26px 22px;gap:22px}.lgL h1{font-size:26px}.lgL>small{display:none}}
+.rs{max-height:360px;overflow-y:auto;margin-top:6px;overscroll-behavior:contain}.rs .pick{padding:8px 12px}.wb{margin-top:10px;border-color:var(--wn);background:#fff8e8}.wb input{margin-top:8px}.nm{margin-top:10px;display:flex;justify-content:space-between;align-items:center;gap:10px;background:#f1f7f4}.nm b{font-size:16px;letter-spacing:.2px}
+@media(max-width:860px){body{font-size:13.5px}.hd{margin-bottom:14px}.hd h1{font-size:20px}.hd p{font-size:12.5px}main{padding:16px 12px 92px}.kpi{padding:12px;gap:10px}.kic{width:36px;height:36px}.kpi b{font-size:20px}.card{padding:12px}.t{font-size:32px}.sec-t{margin:20px 0 10px}
+button{padding:9px 13px;font-size:13.5px}input,select{padding:9px 11px;font-size:14px}.md>div{padding:18px 16px}
+table{font-size:12px;border-radius:10px;table-layout:auto}th,td{padding:6px 5px;line-height:1.35;word-break:break-word;vertical-align:top;white-space:normal}th{font-size:10.5px;letter-spacing:0}td[style]{white-space:normal!important}td button{margin:1px 0;padding:4px 8px;font-size:11.5px}.tag{font-size:10.5px;padding:1px 6px}}
+.cl{display:none}.cc{background:#fff;border:1px solid var(--ln);border-radius:10px;padding:8px 10px;margin-bottom:6px;display:flex;gap:8px;align-items:flex-start}.cc .bd{flex:1;min-width:0}.cc .n{font-weight:600;font-size:13px;line-height:1.3;word-break:break-word}.cc .s{color:var(--mu);font-size:11.5px;line-height:1.45;word-break:break-word}
+.cc .ac{display:flex;flex-direction:column;gap:4px;flex:none}.cc .ac button{padding:3px 10px;font-size:11px;border-radius:7px}.cc .rt{text-align:right;flex:none;font-size:12.5px}.cc .rt .ac{flex-direction:row;margin-top:5px;justify-content:flex-end}
+.flt{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;max-width:720px}.flt input,.flt select{padding:7px 8px;font-size:12.5px}.flt button{padding:7px 6px;font-size:12.5px}.pw{font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--tx);user-select:all}
+@media(max-width:860px){.dsk{display:none}.cl{display:block}}
+</style>
+</head>
+<body>
+<div id="toast"></div>
+<div id="app"></div>
+<script>
+/* ====== ISI DENGAN DATA SUPABASE ANDA (Project Settings > API) ====== */
+const SUPABASE_URL='https://dtajuakgzpjfajwpsspg.supabase.co', SUPABASE_KEY='sb_publishable_Pw4nFq4gs4CSOaf-aoNrVw_CR8FdQ-K';
+/* =================================================================== */
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const S={user:null,role:'',santri:[],phones:[],active:[],cfg:{quota:2,limit_min:5,warn_min:4},off:0,tab:'dash',alerted:{}};
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const now=()=>Date.now()+S.off;
+const fmt=s=>{s=Math.max(0,Math.floor(s));return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')};
+const BH=['Muharam','Safar','Rabiulawal','Rabiulakhir','Jumadilawal','Jumadilakhir','Rajab','Syakban','Ramadan','Syawal','Zulkaidah','Zulhijah'],DAY=864e5,TZ=7*36e5;
+let HF;try{HF=new Intl.DateTimeFormat('en-u-ca-islamic-umalqura',{day:'numeric',month:'numeric',year:'numeric',timeZone:'Asia/Jakarta'})}catch(e){HF=new Intl.DateTimeFormat('en-u-ca-islamic',{day:'numeric',month:'numeric',year:'numeric',timeZone:'Asia/Jakarta'})}
+const hij=t=>{const p={};HF.formatToParts(new Date(+new Date(t)+(S.cfg.hijri_offset||0)*DAY)).forEach(x=>p[x.type]=x.value);return {y:parseInt(p.year),m:+p.month,d:+p.day}};
+const mid=t=>Math.floor((+t+TZ)/DAY)*DAY-TZ;
+function fromHij(y,m,d){const c=mid(Date.UTC(622,6,19)+((y-1)*354.367+(m-1)*29.53+d-1)*DAY);for(let k=-6;k<=6;k++){const t=c+k*DAY,h=hij(t);if(h.y===y&&h.m===m&&h.d===d)return t}return null}
+const monthStart=()=>{const h=hij(now());return new Date(fromHij(h.y,h.m,1))};
+const hariN=t=>new Date(t).toLocaleDateString('id-ID',{weekday:'long',timeZone:'Asia/Jakarta'});
+const fmtH=t=>{const h=hij(t);return `${h.d} ${BH[h.m-1]} ${h.y} H`};
+const jam=t=>new Date(t).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Jakarta'}).replace(':','.');
+const tgl=t=>fmtH(t)+', '+jam(t);
+function hPick(id,day,def){const h=hij(now());return (day?`<select id="${id}d"><option value="">Hari</option>${[...Array(30)].map((_,i)=>`<option>${i+1}</option>`).join('')}</select>`:'')+
+ `<select id="${id}m">${def?'':'<option value="">Bulan</option>'}${BH.map((n,i)=>`<option value="${i+1}" ${def&&h.m===i+1?'selected':''}>${n}</option>`).join('')}</select><select id="${id}y">${def?'':'<option value="">Tahun</option>'}${[h.y-2,h.y-1,h.y,h.y+1].map(y=>`<option ${def&&y===h.y?'selected':''}>${y}</option>`).join('')}</select>`}
+function hRange(id){const g=k=>{const e=document.getElementById(id+k);return e&&e.value?+e.value:0};let y=g('y'),m=g('m'),d=g('d');if(!y&&!m&&!d)return null;if(!y)y=hij(now()).y;
+ if(m&&d){const a=fromHij(y,m,d);if(a!=null)return [a,a+DAY]}
+ if(m)return [fromHij(y,m,1),m===12?fromHij(y+1,1,1):fromHij(y,m+1,1)];return [fromHij(y,1,1),fromHij(y+1,1,1)]}
+
+function toast(m){const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',4000)}
+let ac;function beep(n=3){try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();for(let i=0;i<n;i++){const o=ac.createOscillator(),g=ac.createGain();o.frequency.value=880;o.connect(g);g.connect(ac.destination);const t=ac.currentTime+i*.45;g.gain.setValueAtTime(.4,t);g.gain.setValueAtTime(0,t+.3);o.start(t);o.stop(t+.32)}}catch(e){}}
+async function audit(aksi,detail){await sb.from('audit').insert({admin_email:S.user.email,aksi,detail})}
+function csv(rows,name){const c=rows.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+c],{type:'text/csv'}));a.download=name;a.click()}
+
+/* ---------- LOGIN ---------- */
+function loginView(){$('#app').innerHTML=`<div class="lg"><div class="lgL"><div class="brand"><span class="logo">${ic('phone')}</span><div><b>KADA</b><small>Telepon Santri</small></div></div>
+<div><h1>Telepon santri, tertata dan terpantau.</h1><p>Jatah, durasi, dan riwayat panggilan dikelola dalam satu tempat.</p></div><small style="color:#7f9a90">Sistem administrasi telepon santri</small></div>
+<div class="lgR"><div class="lgF"><h2>Masuk</h2><p class="mu" style="margin:4px 0 14px">Gunakan akun Admin atau akun HP.</p>
+<label class="mu">Username<input id="u" autocapitalize="none" autocomplete="username"></label><label class="mu">Password<input id="p" type="password" autocomplete="current-password"></label>
+<p id="err" style="color:var(--rd);margin:8px 0 0;min-height:20px"></p><button onclick="login()">Masuk</button></div></div></div>`;$('#p').onkeydown=e=>{if(e.key==='Enter')login()}}
+async function login(){const u=$('#u').value.trim(),email=mail(u);
+ const {error}=await sb.auth.signInWithPassword({email,password:$('#p').value});
+ if(error){$('#err').textContent=/confirm/i.test(error.message)?'Akun belum dikonfirmasi di Supabase':'Username atau password salah';return}S.armed=true;arm();wake();beep(1);boot()}
+async function logout(){await sb.auth.signOut();location.reload()}
+
+/* ---------- BOOT & DATA ---------- */
+async function boot(){
+ const {data:{session}}=await sb.auth.getSession();const user=session&&session.user;if(!user)return loginView();S.user=user;
+ const [t,pr]=await Promise.all([sb.rpc('server_now'),sb.from('profiles').select('role,daerah').eq('user_id',user.id).maybeSingle()]);
+ if(t.data)S.off=new Date(t.data)-Date.now();
+ if(!pr.data){$('#app').innerHTML='<div class="tm"><h2>Akun belum punya peran</h2><p>Hubungi admin pusat.</p><button class="sec" onclick="logout()">Keluar</button></div>';return}
+ S.role=pr.data.role;S.daerah=pr.data.daerah;await loadBase();
+ sb.channel('calls').on('postgres_changes',{event:'*',schema:'public',table:'calls'},()=>refreshActive()).subscribe();
+ setInterval(refreshActive,15000);setInterval(tick,1000);
+ S.on=new Set();
+ if(S.role==='terminal'){const p=myPhone();if(p){const ping=()=>sb.from('phones').update({last_seen:new Date(now()).toISOString()}).eq('id',p.id);ping();setInterval(ping,20000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')ping()});
+  S.pch=sb.channel('hp-presence',{config:{presence:{key:String(p.id)}}});S.pch.subscribe(st=>{if(st==='SUBSCRIBED')S.pch.track({at:Date.now()})})}}
+ else{const ch=sb.channel('hp-presence');ch.on('presence',{event:'sync'},()=>{S.on=new Set(Object.keys(ch.presenceState()));const g=sig();if(g!==S.sig){S.sig=g;if(S.tab==='dash')render()}}).subscribe()}
+ render()}
+const myPhone=()=>S.phones.find(p=>p.email===S.user.email);
+async function loadBase(){
+ const [c,p,a]=await Promise.all([sb.from('settings').select('*').eq('id',1).single(),sb.from('phones').select('*').eq('aktif',true).order('id'),sb.from('calls').select('*,santri(nama,kamar),phones(nama)').eq('status','aktif')]);
+ if(c.data)S.cfg=c.data;S.phones=p.data||[];S.active=a.data||[];S.sig=sig()}
+const isOn=p=>(S.on&&S.on.has(String(p.id)))||!!(p.last_seen&&now()-new Date(p.last_seen)<75000);
+const sig=()=>S.active.map(c=>c.id+c.status).join()+'|'+S.phones.map(p=>isOn(p)?1:0).join();
+/* Layar hanya digambar ulang jika status HP benar-benar berubah, dan hanya di Dashboard/HP terminal. Tab lain & isian form tidak tersentuh. */
+async function refreshActive(quiet){
+ const {data}=await sb.from('calls').select('*,santri(nama,kamar),phones(nama)').eq('status','aktif');if(data)S.active=data;
+ if(S.role!=='terminal'){const {data:p}=await sb.from('phones').select('*').eq('aktif',true).order('id');if(p)S.phones=p}
+ const g=sig();if(quiet){S.sig=g;return}
+ if(g!==S.sig){S.sig=g;if(S.role==='terminal'||S.tab==='dash')render()}}
+
+/* ---------- RENDER ---------- */
+const IC={dash:'<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>',
+santri:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+riwayat:'<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',rekap:'<path d="M3 3v18h18M7 16V9M12 16V5M17 16v-4"/>',
+akun:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/>',set:'<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
+phone:'<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8.1 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/>',
+out:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>',plus:'<path d="M12 5v14M5 12h14"/>',ok:'<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>'};
+const ic=k=>`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${IC[k]}</svg>`;
+const hd=(t,sub,b='')=>`<div class="hd"><div><h1>${t}</h1><p>${sub}</p></div>${b}</div>`;
+const mail=u=>(u.includes('@')?u:u+'@operator.local').toLowerCase(),un=e=>String(e).replace('@operator.local','');
+function render(){if(S.role==='terminal')return terminalView();
+ const T={dash:['Beranda','dash'],santri:['Santri','santri'],riwayat:['Riwayat','riwayat'],rekap:['Rekap','rekap'],akun:['Akun','akun'],set:['Pengaturan','set']};
+ const nav=Object.entries(T).map(([k,[l,i]])=>`<button class="${S.tab===k?'on':''}" onclick="S.tab='${k}';render()">${ic(i)}<span>${l}</span></button>`).join('');
+ $('#app').innerHTML=`<aside class="side"><div class="brand"><span class="logo">${ic('phone')}</span><div><b>KADA</b><small>Telepon Santri</small></div></div><nav>${nav}</nav>
+ <div class="me"><span class="av">${esc(un(S.user.email)[0].toUpperCase())}</span><div><b>${esc(un(S.user.email))}</b><small>${S.role==='pusat'?'Admin Pusat':'Admin Daerah '+S.daerah}</small></div><button title="Keluar" onclick="logout()">${ic('out')}</button></div></aside><main id="main"></main>`;
+ ({dash,santri:santriTab,riwayat,rekap,akun,set:setTab})[S.tab]()}
+const phStatus=p=>{const c=S.active.find(x=>x.phone_id===p.id);if(c){const e=(now()-new Date(c.started_at))/1000;return {c,k:e>=c.limit_sec?'on over':e>=S.cfg.warn_min*60?'warn':'on'}}
+ return {c:null,k:isOn(p)?'':'off'}};
+async function dash(){
+ const td=new Date(now());td.setHours(0,0,0,0);
+ const st=S.phones.map(phStatus);const kpi=(i,v,l,c,id='')=>`<div class="kpi"><span class="kic ${c}">${ic(i)}</span><div><b id="${id}">${v}</b><small>${l}</small></div></div>`;
+ $('#main').innerHTML=hd('Beranda',(S.role==='pusat'?'Semua daerah':'Daerah '+S.daerah)+' · '+hariN(now())+', '+fmtH(now()),`<button onclick="startModal()">${ic('plus')}Mulai telepon</button>`)+
+ `<div class="stats">${kpi('phone',st.filter(x=>x.c).length,'Sedang telepon','r')}${kpi('ok',st.filter(x=>!x.c&&x.k!=='off').length,'HP online','g')}${kpi('riwayat','…','Telepon hari ini','b','k3')}${kpi('santri','…','Total santri','n','k4')}</div>
+ <h3 class="sec-t">Status HP</h3><div class="grid">${S.phones.map((p,i)=>{const s=st[i],c=s.c;return `<div class="card ph ${s.k}"><div class="top"><span class="av">${ic('phone')}</span><b>${esc(p.nama)}${S.role==='pusat'&&p.daerah?` <span class="tag">${p.daerah}</span>`:''}</b><span class="pill">${c?(s.k.includes('over')?'Batas lewat':s.k==='warn'?'Hampir batas':'Sedang telepon'):s.k==='off'?'Offline':'Online'}</span></div>
+ ${c?`<div class="who">${esc(c.santri.nama)}</div><div class="mu">Kamar ${esc(c.santri.kamar)} · dengan ${esc(c.tujuan)}${c.nomor?' · '+esc(c.nomor):''}</div><div class="t" data-s="${c.started_at}" data-l="${c.limit_sec}">00:00</div><div class="bar"><i></i></div><div class="mu" style="margin:6px 0 12px">Batas ${fmt(c.limit_sec)}</div>
+ <div class="row"><button class="bad" onclick="finish(${c.id})">Selesai</button><button class="sec" onclick="cancelCall(${c.id})">Batal</button></div>`:`<div class="mu" style="padding:18px 0 6px">${s.k==='off'?'Belum login':'Siap dipakai'}</div>`}</div>`}).join('')||'<p class="mu">Belum ada HP. Tambahkan lewat menu Akun.</p>'}</div>`;tick();
+ const [a,b]=await Promise.all([sb.from('calls').select('id',{count:'exact',head:true}).neq('status','batal').gte('started_at',td.toISOString()),sb.from('santri').select('id',{count:'exact',head:true}).eq('aktif',true)]);
+ const k3=$('#k3'),k4=$('#k4');if(k3)k3.textContent=a.count||0;if(k4)k4.textContent=(b.count||0).toLocaleString('id-ID')}
+
+/* ---------- TIMER & ALARM ---------- */
+function tick(){
+ document.querySelectorAll('.t[data-s]').forEach(el=>{const e=(now()-new Date(el.dataset.s))/1000;el.textContent=fmt(e);const c=el.closest('.ph'),rt=c||el.closest('.tm'),bi=rt&&rt.querySelector('.bar i');if(bi)bi.style.width=Math.min(100,e/+el.dataset.l*100)+'%';if(c){const l=+el.dataset.l;c.classList.toggle('over',e>=l);c.classList.toggle('warn',e>=S.cfg.warn_min*60&&e<l);const pl=c.querySelector('.pill');if(pl)pl.textContent=e>=l?'Batas lewat':e>=S.cfg.warn_min*60?'Hampir batas':'Sedang telepon'}});
+ for(const c of S.active){const e=(now()-new Date(c.started_at))/1000;
+  if(S.role!=='terminal'){const k1='w'+c.id,k2='l'+c.id;
+   if(e>=S.cfg.warn_min*60&&e<c.limit_sec&&!S.alerted[k1]){S.alerted[k1]=1;toast(`🟠 ${c.phones.nama}: ${c.santri.nama} hampir batas`);beep(1)}
+   if(e>=c.limit_sec&&!S.alerted[k2]){S.alerted[k2]=1;toast(`🔔 ${c.phones.nama}: ${c.santri.nama} mencapai batas ${fmt(c.limit_sec)}`);beep(3)}}
+  else if(myPhone()&&c.phone_id===myPhone().id){
+   const tm=$('#tm');if(tm){tm.classList.toggle('warn',e>=S.cfg.warn_min*60&&e<c.limit_sec);tm.classList.toggle('over',e>=c.limit_sec);
+    const al=$('#al');if(al)al.textContent=e>=c.limit_sec?'⚠️ WAKTU '+fmt(c.limit_sec)+' TELAH TERCAPAI':e>=S.cfg.warn_min*60?'Waktu hampir habis':'';
+    if(e>=c.limit_sec&&Math.floor(e)%3===0&&navigator.vibrate)navigator.vibrate([400,150,400])}}}}
+/* ---------- ALARM HP TERMINAL ---------- */
+const wavURL=(a,R)=>{const h=new DataView(new ArrayBuffer(44)),w=(o,t)=>[...t].forEach((c,i)=>h.setUint8(o+i,c.charCodeAt(0)));
+ w(0,'RIFF');h.setUint32(4,36+a.length,true);w(8,'WAVEfmt ');h.setUint32(16,16,true);h.setUint16(20,1,true);h.setUint16(22,1,true);h.setUint32(24,R,true);h.setUint32(28,R,true);h.setUint16(32,1,true);h.setUint16(34,8,true);w(36,'data');h.setUint32(40,a.length,true);
+ return URL.createObjectURL(new Blob([h,a],{type:'audio/wav'}))};
+/* Satu file audio: hening sampai batas waktu, lalu bunyi beep berulang. Diputar sejak telepon dimulai sehingga tetap berjalan sebagai pemutar media saat aplikasi lain dibuka. */
+function mkAlarm(limit,warn){const R=4000,tot=Math.ceil(limit)+90,a=new Uint8Array(R*tot).fill(128);for(let i=0;i<a.length;i+=2)a[i]=129;
+ const beep=(t0,d)=>{for(let i=0;i<R*d;i++){const n=Math.floor(t0*R)+i;if(n<a.length)a[n]=128+(Math.sin(2*Math.PI*1000*i/R)>=0?115:-115)}};
+ if(warn<limit)beep(warn,.4);for(let t=limit;t<tot-1;t+=.6)beep(t,.35);return wavURL(a,R)}
+function arm(){S.au=S.au||new Audio();S.au.src=wavURL(new Uint8Array(400).fill(128),4000);S.au.play().catch(()=>{})}
+async function wake(){try{S.wl=await navigator.wakeLock.request('screen')}catch(e){}}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&S.armed)wake()});
+function syncAudio(c){if(!S.au)return;
+ if(!c){if(S.ac!==null){S.au.pause();S.ac=null}return}
+ if(S.ac===c.id)return;S.ac=c.id;const e=(now()-new Date(c.started_at))/1000;
+ S.au.src=mkAlarm(c.limit_sec,S.cfg.warn_min*60);S.au.onloadedmetadata=()=>{try{S.au.currentTime=Math.min(e,c.limit_sec+80)}catch(x){}};S.au.play().catch(()=>{});
+ if(navigator.mediaSession&&window.MediaMetadata)navigator.mediaSession.metadata=new MediaMetadata({title:'Telepon aktif: '+c.santri.nama,artist:'KADA Telepon Santri'})}
+const LOCK=`<button class="xl" title="Khusus petugas" onclick="exitModal()"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button>`;
+async function goOffline(){try{const p=myPhone();if(p)await sb.from('phones').update({last_seen:null}).eq('id',p.id);if(S.pch)await sb.removeChannel(S.pch)}catch(e){}}
+function exitModal(){const el=document.createElement('div');el.className='md';document.body.appendChild(el);
+ el.innerHTML=`<div><h2>Keluar dari HP ini</h2><p class="mu">Khusus petugas. Masukkan password akun ${esc(un(S.user.email))}.</p><input id="xp" type="password" placeholder="Password akun HP" autocomplete="off"><p id="xe" style="color:var(--rd);min-height:20px;margin:6px 0 0"></p><div class="row"><button class="sec" onclick="this.closest('.md').remove()">Batal</button><button id="xo">Keluar</button></div></div>`;
+ const go=async()=>{const {error}=await sb.auth.signInWithPassword({email:S.user.email,password:el.querySelector('#xp').value});if(error){el.querySelector('#xe').textContent='Password salah';return}await goOffline();logout()};
+ el.querySelector('#xo').onclick=go;el.querySelector('#xp').onkeydown=e=>{if(e.key==='Enter')go()};el.querySelector('#xp').focus()}
+function terminalView(){const p=myPhone();
+ if(!p){$('#app').innerHTML=`<div class="tm"><h2>HP belum terdaftar</h2><p>Akun ${esc(S.user.email)} belum dipasangkan dengan HP. Hubungi admin.</p>${LOCK}</div>`;return}
+ if(!S.armed){$('#app').innerHTML=`<div class="tm"><h1>${esc(p.nama)}</h1><p>Ketuk sekali agar alarm dan layar siaga aktif.</p><button class="sec" style="font-size:20px;padding:16px 28px" onclick="S.armed=true;arm();wake();render()">🔔 Aktifkan alarm</button>${LOCK}</div>`;return}
+ const c=S.active.find(x=>x.phone_id===p.id);syncAudio(c);
+ $('#app').innerHTML=c?`<div class="tm" id="tm"><span class="pill">● Telepon aktif</span><h1>${esc(c.santri.nama)}</h1><h3>Dengan ${esc(c.tujuan)}</h3><div class="big t" data-s="${c.started_at}" data-l="${c.limit_sec}">00:00</div><div class="bar"><i></i></div><h3>Batas ${fmt(c.limit_sec)}</h3><h2 id="al"></h2>${LOCK}</div>`
+ :`<div class="tm"><h1>${esc(p.nama)}</h1><h3>🟢 Siaga — menunggu Admin</h3><p style="opacity:.7">Layar ini otomatis berubah saat telepon dimulai.</p>${LOCK}</div>`;tick()}
+
+/* ---------- MULAI TELEPON ---------- */
+async function usedFor(ids){if(!ids.length)return {};const {data}=await sb.from('calls').select('santri_id').in('santri_id',ids).neq('status','batal').eq('luar_jatah',false).gte('started_at',monthStart().toISOString());const m={};(data||[]).forEach(r=>m[r.santri_id]=(m[r.santri_id]||0)+1);return m}
+async function startModal(){
+ const free=S.phones.filter(p=>!S.active.some(c=>c.phone_id===p.id));
+ if(!free.length)return toast('Semua HP sedang dipakai');
+ let P=null,T='Wali',busy=false,rows=[],U={},seq=0,tm,sel=null,ot='',al='';
+ const el=document.createElement('div');el.className='md';document.body.appendChild(el);
+ el.innerHTML=`<div><h2>Mulai telepon</h2><p class="mu">Cari dengan ID atau nama santri. Durasi ${S.cfg.limit_min} menit.</p>
+ <input id="q" placeholder="ID atau nama santri…" autocomplete="off"><div id="res" class="rs"></div><div id="sel"></div>
+ <div class="row" style="margin-top:14px"><button class="sec" onclick="this.closest('.md').remove()">Tutup</button><button id="go" style="flex:1" disabled>▶ Mulai telepon</button></div></div>`;
+ const q=el.querySelector('#q'),res=el.querySelector('#res'),box=el.querySelector('#sel'),go=el.querySelector('#go');q.focus();
+ const drawSel=()=>{if(!sel){box.innerHTML='';go.disabled=true;res.style.display='';return}
+  const n=U[sel.id]||0,hab=n>=S.cfg.quota,cand=free.filter(p=>p.daerah===sel.daerah);if(!cand.find(p=>p.id===P))P=cand[0]?cand[0].id:null;res.style.display='none';
+  box.innerHTML=`<div class="card" style="margin-top:10px"><div class="row" style="flex-wrap:nowrap"><div style="flex:1;min-width:0"><b>${esc(sel.nama)}</b><br><span class="mu">${esc(sel.id_santri)} · Kamar ${esc(sel.kamar)} · telepon ${n}/${S.cfg.quota}</span></div><button class="sec sm" id="chg">Ganti</button></div></div>
+  ${hab?`<div class="card wb"><b>Jatah bulan ini sudah habis</b><input id="al" placeholder="Alasan izin khusus (wajib)" value="${esc(al)}"></div>`:''}
+  ${cand.length>1?`<p class="mu">HP yang dipakai</p><div class="chips">${cand.map(p=>`<button class="${P===p.id?'on':''}" data-p="${p.id}">${esc(p.nama)}${isOn(p)?'':' (offline)'}</button>`).join('')}</div>`:cand.length?'':`<p class="mu" style="color:var(--rd)">Tidak ada HP kosong untuk daerah ${esc(sel.daerah)}</p>`}
+  <p class="mu">Yang ditelepon</p><div class="chips">${['Ayah','Ibu','Wali','Kakak','Lainnya'].map(t=>`<button class="${T===t?'on':''}" data-t="${t}">${t}</button>`).join('')}</div>
+  <div class="card nm"><span class="mu">Nomor wali</span><b>${sel.no_hp?esc(sel.no_hp):'Belum terisi'}</b></div>
+  <label class="mu">Nomor lain yang dihubungi (opsional)<input id="ot" inputmode="tel" placeholder="Isi hanya jika bukan nomor wali di atas" value="${esc(ot)}"></label>`;
+  go.disabled=!P;box.querySelector('#chg').onclick=()=>{sel=null;drawSel();q.focus()};
+  box.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{P=+b.dataset.p;drawSel()});box.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{T=b.dataset.t;drawSel()});
+  box.querySelector('#ot').oninput=e=>ot=e.target.value;const a=box.querySelector('#al');if(a)a.oninput=e=>al=e.target.value};
+ const draw=()=>{res.innerHTML=rows.map(s=>`<button class="pick" data-id="${s.id}"><b>${esc(s.nama)}</b><br><span class="mu">${esc(s.id_santri)} · Kamar ${esc(s.kamar)} · ${esc(s.tingkat)} ${esc(s.kelas)} · ${U[s.id]||0}/${S.cfg.quota}${(U[s.id]||0)>=S.cfg.quota?' · JATAH HABIS':''}</span></button>`).join('')||(q.value.trim()?'<p class="mu">Santri tidak ditemukan</p>':'');
+  res.querySelectorAll('.pick').forEach(b=>b.onclick=()=>{sel=rows.find(s=>s.id==b.dataset.id);ot='';al='';drawSel()})};
+ const find=async()=>{const v=q.value.trim().replace(/[%,()]/g,' ').trim(),my=++seq;if(!v){rows=[];draw();return}
+  let qq=sb.from('santri').select('id,id_santri,nama,kamar,kelas,tingkat,daerah,no_hp').eq('aktif',true);
+  qq=/^\d/.test(v)?qq.or(`id_santri.ilike.${v}%,nama.ilike.%${v}%`):v.split(/\s+/).reduce((x,w)=>x.ilike('nama',`%${w}%`),qq);
+  const {data}=await qq.order('nama').limit(50);if(my!==seq)return;rows=(data||[]).sort((a,b)=>(b.id_santri===v)-(a.id_santri===v));U=await usedFor(rows.map(r=>r.id));if(my===seq)draw()};
+ q.oninput=()=>{clearTimeout(tm);tm=setTimeout(find,200)};
+ q.onkeydown=e=>{if(e.key==='Enter'){clearTimeout(tm);find().then(()=>{if(rows.length===1||(rows[0]&&rows[0].id_santri===q.value.trim())){sel=rows[0];ot='';al='';drawSel()}})}};
+ go.onclick=async()=>{if(busy||!sel||!P)return;const n=U[sel.id]||0,hab=n>=S.cfg.quota;if(hab&&!al.trim())return toast('Isi alasan izin khusus');
+  const ph=S.phones.find(p=>p.id===P),nomor=ot.trim()||sel.no_hp||null;busy=true;
+  const {error}=await sb.from('calls').insert({santri_id:sel.id,phone_id:P,tujuan:T,nomor,limit_sec:S.cfg.limit_min*60,admin_id:S.user.id,luar_jatah:hab,alasan:hab?al:null});
+  if(error){busy=false;return toast(error.code==='23505'?'Santri atau HP ini sedang dipakai':error.message)}
+  await audit('MULAI',`${sel.nama} (${sel.id_santri}) • ${ph.nama} • ${T}${nomor?' • '+nomor:''}${hab?' • luar jatah: '+al:''}`);el.remove();await refreshActive()}}
+
+/* ---------- SELESAI / BATAL ---------- */
+async function finish(id){const c=S.active.find(x=>x.id===id);if(!confirm(`Selesaikan telepon ${c.santri.nama}?`))return;
+ const end=new Date(now());const {error}=await sb.from('calls').update({status:'selesai',ended_at:end.toISOString()}).eq('id',id);if(error)return toast('Gagal menyimpan');
+ const dur=(end-new Date(c.started_at))/1000;const U=await usedFor([c.santri_id]);
+ await audit('SELESAI',`${c.santri.nama} • ${fmt(dur)}`);toast(`✅ ${c.santri.nama}: ${Math.floor(dur/60)} menit ${Math.floor(dur%60)} detik • telepon ke ${U[c.santri_id]||1}/${S.cfg.quota}`);await refreshActive()}
+async function cancelCall(id){const c=S.active.find(x=>x.id===id);if((now()-new Date(c.started_at))/1000>60)return toast('Pembatalan hanya bisa dalam 1 menit pertama. Gunakan Selesai lalu Koreksi.');
+ if(!confirm('Batalkan sesi? Jatah tidak terpotong.'))return;await sb.from('calls').update({status:'batal',ended_at:new Date(now()).toISOString()}).eq('id',id);await audit('BATAL',c.santri.nama);await refreshActive()}
+
+/* ---------- SANTRI ---------- */
+const KOL=['id_santri','nama','kamar','kelas','tingkat','alamat','no_hp'];
+let SQ={q:'',p:0,n:0,rows:[]},PS=50,sqt;
+function santriTab(){SQ.q='';SQ.p=0;
+ $('#main').innerHTML=hd('Data santri',S.role==='pusat'?'Semua daerah':'Daerah '+S.daerah,`<button onclick="santriForm()">${ic('plus')}Tambah santri</button>`)+
+ `<details class="card" style="margin-bottom:14px"><summary style="cursor:pointer;font-weight:600">Impor data santri (CSV)</summary><p class="mu">Baris pertama berisi nama kolom: ${KOL.join(', ')}. Kamar berformat huruf daerah dan nomor, contoh A-01. ID yang sudah ada diperbarui, bukan digandakan.${S.role==='pusat'?'':' Baris di luar daerah '+S.daerah+' dilewati.'}</p><div class="row"><input type="file" id="fi" accept=".csv,.txt"><button class="sec" onclick="tpl()">Unduh template</button></div></details>
+ <input id="sq" placeholder="Cari ID, nama, atau kamar…"><div class="sc" style="margin-top:12px"><table id="st"></table></div><div class="row" id="pg" style="margin-top:12px;justify-content:space-between"></div>`;
+ $('#fi').onchange=impor;$('#sq').oninput=e=>{clearTimeout(sqt);sqt=setTimeout(()=>{SQ.q=e.target.value;SQ.p=0;loadSantriPage()},250)};loadSantriPage()}
+async function loadSantriPage(){const v=SQ.q.trim().replace(/[%,()]/g,' ');
+ let q=sb.from('santri').select('*',{count:'exact'}).eq('aktif',true).order('nama').range(SQ.p*PS,SQ.p*PS+PS-1);
+ if(v)q=q.or(`id_santri.ilike.${v}%,nama.ilike.%${v}%,kamar.ilike.${v}%`);
+ const {data,count,error}=await q;if(error)return toast(error.message);SQ.rows=data||[];SQ.n=count||0;
+ const st=$('#st');if(!st)return;const a=SQ.p*PS;
+ const sj=x=>x.filter(Boolean).join(' · ');
+ st.parentNode.innerHTML='<table id="st" class="dsk"><tr><th>ID</th><th>Nama</th><th>Kamar</th><th>Tingkat / kelas</th><th>No. HP</th><th></th></tr>'+(SQ.rows.map(s=>`<tr><td>${esc(s.id_santri)}</td><td>${esc(s.nama)}<br><span class="mu">${esc(s.alamat)}</span></td><td>${esc(s.kamar)}</td><td>${esc(s.tingkat)} ${esc(s.kelas)}</td><td>${esc(s.no_hp)}</td><td style="white-space:nowrap"><button class="sec sm" onclick="santriForm(${s.id})">Ubah</button> <button class="sec sm" onclick="delS(${s.id})">Hapus</button></td></tr>`).join('')||'<tr><td colspan=6 class="mu">Tidak ada data</td></tr>')+'</table><div class="cl">'+(SQ.rows.map(s=>`<div class="cc"><div class="bd"><div class="n">${esc(s.nama)}</div><div class="s">${esc(sj([s.id_santri,s.kamar,((s.tingkat||'')+' '+(s.kelas||'')).trim()]))}</div><div class="s">${esc(sj([s.alamat,s.no_hp]))}</div></div><div class="ac"><button class="sec sm" onclick="santriForm(${s.id})">Ubah</button><button class="sec sm" onclick="delS(${s.id})">Hapus</button></div></div>`).join('')||'<p class="mu">Tidak ada data</p>')+'</div>';
+ $('#pg').innerHTML=`<span class="mu">${SQ.n?`${a+1}–${a+SQ.rows.length} dari ${SQ.n.toLocaleString('id-ID')}`:''}</span><span class="row" style="flex:0 0 auto"><button class="sec sm" ${SQ.p?'':'disabled'} onclick="SQ.p--;loadSantriPage()">‹ Sebelumnya</button><button class="sec sm" ${a+PS<SQ.n?'':'disabled'} onclick="SQ.p++;loadSantriPage()">Berikutnya ›</button></span>`}
+function santriForm(id){const s=SQ.rows.find(x=>x.id===id)||{};const el=document.createElement('div');el.className='md';document.body.appendChild(el);
+ const f=(k,l,ph='')=>`<label class="mu">${l}<input data-k="${k}" value="${esc(s[k])}" placeholder="${ph}"></label>`;
+ el.innerHTML=`<div><h2>${id?'Ubah':'Tambah'} santri</h2>${f('id_santri','ID santri')}${f('nama','Nama')}${f('kamar','Kamar (huruf daerah-nomor)','contoh: A-01')}${f('kelas','Kelas')}<label class="mu">Tingkat<select data-k="tingkat">${['','Idadiyah','Ibtidaiyah','Tsanawiyah','Aliyah'].map(t=>`<option ${s.tingkat===t?'selected':''}>${t}</option>`).join('')}</select></label>${f('alamat','Alamat')}${f('no_hp','Nomor HP')}
+ <div class="row" style="margin-top:14px"><button class="sec" onclick="this.closest('.md').remove()">Batal</button><button id="sv" style="flex:1">Simpan</button></div></div>`;
+ el.querySelector('#sv').onclick=async()=>{const v={};el.querySelectorAll('[data-k]').forEach(i=>v[i.dataset.k]=i.value.trim());v.kamar=(v.kamar||'').toUpperCase();
+  if(!v.id_santri||!v.nama)return toast('ID santri dan nama wajib diisi');if(!/^[A-Z]-\d+$/.test(v.kamar))return toast('Kamar harus berformat huruf-nomor, contoh A-01');
+  if(S.role!=='pusat'&&!v.kamar.startsWith(S.daerah))return toast(`Kamar harus berawalan ${S.daerah}- (daerah Anda)`);
+  const {error}=id?await sb.from('santri').update(v).eq('id',id):await sb.from('santri').insert(v);if(error)return toast(error.code==='23505'?'ID santri sudah dipakai':error.message);
+  await audit(id?'UBAH SANTRI':'TAMBAH SANTRI',v.nama);el.remove();loadSantriPage()}}
+function parseCSV(t){t=t.replace(/^\ufeff/,'');const l0=t.split('\n')[0];const d=[',',';','\t'].sort((a,b)=>l0.split(b).length-l0.split(a).length)[0];
+ const rows=[];let r=[],c='',q=false;for(let i=0;i<t.length;i++){const ch=t[i];
+  if(q){if(ch=='"'){if(t[i+1]=='"'){c+='"';i++}else q=false}else c+=ch}
+  else if(ch=='"')q=true;else if(ch==d){r.push(c);c=''}else if(ch=='\n'||ch=='\r'){if(ch=='\r'&&t[i+1]=='\n')i++;r.push(c);rows.push(r);r=[];c=''}else c+=ch}
+ if(c||r.length){r.push(c);rows.push(r)}return rows.filter(r=>r.some(x=>x.trim()))}
+async function impor(e){const f=e.target.files[0];if(!f)return;const rows=parseCSV(await f.text());if(rows.length<2)return toast('File kosong');
+ const h=rows[0].map(x=>x.trim().toLowerCase().replace(/[\s-]+/g,'_')),ix=k=>h.indexOf(k);
+ if(ix('id_santri')<0||ix('nama')<0)return toast('Baris pertama harus memuat kolom id_santri dan nama');
+ const m={};let skip=0;rows.slice(1).forEach(r=>{const o={aktif:true};KOL.forEach(k=>o[k]=ix(k)<0?'':(r[ix(k)]||'').trim());o.kamar=o.kamar.toUpperCase();
+  if(!o.id_santri||!o.nama)return;if(S.role!=='pusat'&&!o.kamar.startsWith(S.daerah)){skip++;return}m[o.id_santri]=o});
+ const list=Object.values(m);if(!list.length)return toast('Tidak ada baris valid'+(skip?` (${skip} di luar daerah)`:''));
+ if(!confirm(`Impor ${list.length} santri?${skip?`\n${skip} baris di luar daerah dilewati.`:''}`))return;toast('Mengimpor…');
+ const ch=[];for(let i=0;i<list.length;i+=500)ch.push(list.slice(i,i+500));
+ for(let i=0;i<ch.length;i+=4){const rs=await Promise.all(ch.slice(i,i+4).map(c=>sb.from('santri').upsert(c,{onConflict:'id_santri'})));const er=rs.find(r=>r.error);if(er)return toast('Gagal impor: '+er.error.message)}
+ await audit('IMPOR SANTRI',list.length+' data');toast(list.length+' santri diimpor');santriTab()}
+const tpl=()=>csv([KOL,['1001','Ahmad Fauzan','12','7A','Tsanawiyah','Surabaya','08123456789']],'template-santri.csv');
+async function delS(id){if(!confirm('Nonaktifkan santri ini? Riwayat tetap tersimpan.'))return;const {error}=await sb.from('santri').update({aktif:false}).eq('id',id);if(error)return toast(error.message);await audit('NONAKTIF SANTRI','id '+id);loadSantriPage()}
+
+/* ---------- RIWAYAT ---------- */
+function riwayat(){$('#main').innerHTML=hd('Riwayat telepon','Termasuk yang sedang berlangsung','<button class="sec sm" onclick="exportR()">CSV</button>')+`<div class="flt"><input id="rn" placeholder="Cari nama santri…" style="grid-column:span 3"><button onclick="loadR()">Cari</button><select id="rp"><option value="">Semua HP</option>${S.phones.map(p=>`<option value="${p.id}">${esc(p.nama)}</option>`).join('')}</select>${hPick('rh',true,false)}</div><div class="sc" style="margin-top:12px"><table id="rt" class="dsk"></table></div>`;
+ $('#rn').onkeydown=e=>{if(e.key==='Enter')loadR()};['#rp','#rhd','#rhm','#rhy'].forEach(k=>$(k).onchange=loadR);loadR()}
+let RR=[];
+async function loadR(){$('#rt').innerHTML='<tr><td class="mu">Memuat…</td></tr>';
+ let q=sb.from('calls').select(`*,santri${$('#rn').value.trim()?'!inner':''}(id_santri,nama,kamar),phones(nama)`).order('started_at',{ascending:false}).limit(200);
+ const n=$('#rn').value.trim().replace(/[%,()]/g,' '),p=$('#rp').value,d=hRange('rh');if(n)q=q.ilike('santri.nama','%'+n+'%');if(p)q=q.eq('phone_id',p);
+ if(d)q=q.gte('started_at',new Date(d[0]).toISOString()).lt('started_at',new Date(d[1]).toISOString());
+ const {data,error}=await q;if(error){$('#rt').innerHTML=`<tr><td>Gagal memuat riwayat: ${esc(error.message)}</td></tr>`;return}RR=(data||[]).map(r=>({...r,santri:r.santri||{id_santri:'-',nama:'(tidak diketahui)',kamar:'-'}}));
+ const dr=r=>r.ended_at?fmt((new Date(r.ended_at)-new Date(r.started_at))/1000):fmt((now()-new Date(r.started_at))/1000);
+ const sj=x=>x.filter(Boolean).join(' · '),ph=r=>r.phones&&r.phones.nama,dv=r=>r.status==='batal'?'<span class="tag">Batal</span>':r.status==='aktif'?'<span class="tag r">Berlangsung</span>':`<b>${dr(r)}</b>`;
+ $('#rt').parentNode.innerHTML='<table id="rt" class="dsk"><tr><th>Waktu</th><th>Santri</th><th>HP</th><th>Tujuan</th><th>Durasi</th><th></th></tr>'+(RR.map(r=>`<tr><td>${tgl(r.started_at)}</td><td>${esc(r.santri.nama)}<br><span class="mu">${esc(r.santri.id_santri)} · Kmr ${esc(r.santri.kamar)}</span></td><td>${esc(ph(r))}</td><td>${esc(r.tujuan)}${r.nomor?`<br><span class="mu">${esc(r.nomor)}</span>`:''}</td><td>${dv(r)}${r.luar_jatah?' <span class="tag r" title="'+esc(r.alasan)+'">luar jatah</span>':''}</td><td style="white-space:nowrap">${r.status==='selesai'?`<button class="sec sm" onclick="koreksi(${r.id})">Koreksi</button> `:''}${r.status!=='aktif'?`<button class="sec sm" onclick="delR(${r.id})">Hapus</button>`:''}</td></tr>`).join('')||'<tr><td colspan=6 class="mu">Belum ada riwayat untuk filter ini</td></tr>')+'</table><div class="cl">'+(RR.map(r=>`<div class="cc"><div class="bd"><div class="n">${esc(r.santri.nama)}${r.luar_jatah?' <span class="tag r" title="'+esc(r.alasan)+'">luar jatah</span>':''}</div><div class="s">${esc(sj([r.santri.id_santri,r.santri.kamar,ph(r),r.tujuan,r.nomor]))}</div><div class="s">${tgl(r.started_at)}</div></div><div class="rt">${dv(r)}<div class="ac">${r.status==='selesai'?`<button class="sec sm" onclick="koreksi(${r.id})">Koreksi</button>`:''}${r.status!=='aktif'?`<button class="sec sm" onclick="delR(${r.id})">Hapus</button>`:''}</div></div></div>`).join('')||'<p class="mu">Belum ada riwayat untuk filter ini</p>')+'</div>'}
+async function delR(id){const r=RR.find(x=>x.id===id);if(!r||r.status==='aktif')return toast('Telepon yang berlangsung tidak bisa dihapus. Gunakan Batal.');
+ if(!confirm(`Hapus riwayat ini?\n${r.santri.nama} · ${tgl(r.started_at)}\nJatah santri bulan itu akan kembali bertambah.`))return;
+ const {error}=await sb.from('calls').delete().eq('id',id);if(error)return toast('Gagal menghapus: '+error.message);
+ await audit('HAPUS RIWAYAT',`${r.santri.nama} (${r.santri.id_santri}) • ${tgl(r.started_at)} • ${r.status}${r.nomor?' • '+r.nomor:''}`);toast('Riwayat dihapus');loadR()}
+function exportR(){csv([['Waktu','ID santri','Santri','Kamar','HP','Tujuan','Nomor','Durasi','Status','Alasan']].concat(RR.map(r=>[tgl(r.started_at),r.santri.id_santri,r.santri.nama,r.santri.kamar,r.phones&&r.phones.nama,r.tujuan,r.nomor,r.ended_at?fmt((new Date(r.ended_at)-new Date(r.started_at))/1000):'',r.status,r.alasan])),'riwayat-telepon.csv')}
+async function koreksi(id){const r=RR.find(x=>x.id===id);const m=prompt('Durasi yang benar (menit, boleh desimal):');if(!m||isNaN(m))return;const a=prompt('Alasan koreksi (wajib):');if(!a||!a.trim())return;
+ const {error}=await sb.from('calls').update({ended_at:new Date(new Date(r.started_at).getTime()+m*60000).toISOString()}).eq('id',id);if(error)return toast(error.message);await audit('KOREKSI',`${r.santri.nama}: durasi → ${m} menit. Alasan: ${a}`);loadR()}
+
+/* ---------- REKAP ---------- */
+function rekap(){const m=new Date(now());const v=m.getFullYear()+'-'+String(m.getMonth()+1).padStart(2,'0');
+ $('#main').innerHTML=hd('Rekap bulanan',S.role==='pusat'?'Semua daerah':'Daerah '+S.daerah,`<span class="row" style="flex:0 0 auto">${hPick('rm',false,true)}<button class="sec" onclick="exportK()">CSV</button></span>`)+'<div id="rk"><p class="mu">Memuat…</p></div>';['#rmm','#rmy'].forEach(k=>$(k).onchange=loadK);loadK()}
+let KK=[];
+async function loadK(){const [a0,b0]=hRange('rm'),a=new Date(a0),b=new Date(b0);
+ const [k,c]=await Promise.all([sb.rpc('rekap_kamar',{p_from:a.toISOString(),p_to:b.toISOString(),p_quota:S.cfg.quota}),sb.from('calls').select('started_at,ended_at').eq('status','selesai').gte('started_at',a.toISOString()).lt('started_at',b.toISOString()).limit(10000)]);
+ if(k.error){$('#rk').innerHTML=`<div class="card"><b>Rekap belum aktif</b><p class="mu">Jalankan file kada-daerah.sql di Supabase.<br>(${esc(k.error.message)})</p></div>`;return}
+ const R=k.data||[],sum=R.reduce((t,x)=>({n:t.n+ +x.jumlah,f:t.f+ +x.penuh,o:t.o+ +x.sebagian,z:t.z+ +x.belum}),{n:0,f:0,o:0,z:0});
+ let dur=0;(c.data||[]).forEach(r=>dur+=(new Date(r.ended_at)-new Date(r.started_at))/60000);
+ KK=[['Kamar','Santri','Jatah penuh','Sebagian','Belum']].concat(R.map(x=>[x.kamar,x.jumlah,x.penuh,x.sebagian,x.belum]));
+ $('#rk').innerHTML=`<div class="stats"><div><b>${sum.n.toLocaleString('id-ID')}</b><span>Total santri</span></div><div><b>${sum.f}</b><span>Jatah penuh</span></div><div><b>${sum.o}</b><span>Sebagian</span></div><div><b>${sum.z}</b><span>Belum telepon</span></div></div>
+ <p class="mu">Total panggilan ${(c.data||[]).length} • Total durasi ${Math.round(dur)} menit</p><div class="sc"><table>${KK.map((r,i)=>'<tr>'+r.map(x=>i?`<td>${esc(x)}</td>`:`<th>${x}</th>`).join('')+'</tr>').join('')}</table></div>`}
+const exportK=()=>csv(KK,'rekap-telepon.csv');
+
+/* ---------- PENGATURAN ---------- */
+async function setTab(){const {data:au}=await sb.from('audit').select('*').order('at',{ascending:false}).limit(30);const c=S.cfg,ro=S.role!=='pusat'?'disabled':'';
+ $('#main').innerHTML=hd('Pengaturan',ro?'Aturan ini diatur oleh admin pusat':'Aturan telepon untuk semua daerah')+`<div class="card"><div class="fg"><label class="mu">Jatah per bulan Hijriyah (kali)<input id="cq" type="number" min="1" value="${c.quota}" ${ro}></label><label class="mu">Batas durasi (menit)<input id="cl" type="number" min="1" value="${c.limit_min}" ${ro}></label><label class="mu">Peringatan pada menit ke<input id="cw" type="number" min="1" value="${c.warn_min}" ${ro}></label><label class="mu">Koreksi tanggal Hijriyah<select id="ch" ${ro}>${[-1,0,1].map(v=>`<option value="${v}" ${(c.hijri_offset||0)===v?'selected':''}>${v>0?'+'+v:v} hari</option>`).join('')}</select></label></div>
+ <div class="row" style="margin-top:16px">${ro?'':'<button onclick="saveCfg()">Simpan pengaturan</button>'}<button class="sec" onclick="logout()">${ic('out')}Keluar</button></div></div>
+ <h3 class="sec-t">Log audit</h3><div class="sc"><table><tr><th>Waktu</th><th>Oleh</th><th>Aksi</th><th>Detail</th></tr>${(au||[]).map(a=>`<tr><td>${tgl(a.at)}</td><td>${esc(un(a.admin_email))}</td><td><span class="tag">${esc(a.aksi)}</span></td><td>${esc(a.detail)}</td></tr>`).join('')||'<tr><td class="mu">Belum ada aktivitas</td></tr>'}</table></div>`}
+async function saveCfg(){const v={quota:+$('#cq').value,limit_min:+$('#cl').value,warn_min:+$('#cw').value,hijri_offset:+$('#ch').value};if(v.warn_min>=v.limit_min)return toast('Peringatan harus lebih kecil dari batas');
+ const {error}=await sb.from('settings').update(v).eq('id',1);if(error)return toast(error.message);Object.assign(S.cfg,v);await audit('UBAH PENGATURAN',JSON.stringify(v));toast('Pengaturan tersimpan')}
+
+/* ---------- AKUN LOGIN ---------- */
+let AK=[];const DR='ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+const rlTag=u=>u.role==='pusat'?'<span class="tag b">Admin Pusat</span>':u.role==='admin'?`<span class="tag b">Admin Daerah ${u.daerah}</span>`:`<span class="tag g">${esc(u.phone_nama||'HP')} · ${u.daerah||'?'}</span>`;
+async function akun(){
+ $('#main').innerHTML=hd('Akun login',S.role==='pusat'?'Admin pusat, admin tiap daerah, dan HP telepon':'Akun HP telepon daerah '+S.daerah,`<button onclick="akunForm()">${ic('plus')}Tambah akun</button>`)+'<div id="ak" class="sc"><p class="mu">Memuat…</p></div>';
+ const {data,error}=await sb.rpc('admin_list_users');
+ if(error){$('#ak').innerHTML=`<div class="card"><b>Fitur akun belum aktif</b><p class="mu">Jalankan file kada-daerah.sql di Supabase › SQL Editor, lalu muat ulang.<br>(${esc(error.message)})</p></div>`;return}
+ AK=data||[];
+ $('#ak').innerHTML='<table><tr><th>Username</th><th>Jenis</th><th>Terakhir masuk</th><th></th></tr>'+(AK.map(u=>`<tr><td><b>${esc(un(u.email))}</b>${u.role==='terminal'?`<br><span class="mu">Password: <b class="pw">${u.pw?esc(u.pw):'belum tercatat'}</b></span>`:''}</td><td>${rlTag(u)}</td><td>${u.last_sign_in_at?tgl(u.last_sign_in_at):'<span class="mu">Belum pernah</span>'}</td><td style="white-space:nowrap;text-align:right"><button class="sec sm" onclick="akunForm('${u.id}')">Ubah</button> <button class="sec sm" onclick="delAk('${u.id}')">Hapus</button></td></tr>`).join('')||'<tr><td colspan=4 class="mu">Belum ada akun</td></tr>')+'</table>'}
+function akunForm(id){const u=AK.find(x=>x.id===id)||{},ed=!!id,pu=S.role==='pusat';const el=document.createElement('div');el.className='md';document.body.appendChild(el);
+ const roles=pu?[['admin','Admin daerah (mengelola HP daerahnya)'],['terminal','HP telepon'],['pusat','Admin pusat (mengelola semua)']]:[['terminal','HP telepon']];
+ el.innerHTML=`<div><h2>${ed?'Ubah akun':'Tambah akun'}</h2>
+ <label class="mu">Jenis akun<select id="ar" ${ed?'disabled':''}>${roles.map(([v,l])=>`<option value="${v}" ${(u.role||'terminal')===v?'selected':''}>${l}</option>`).join('')}</select></label>
+ <label class="mu" id="adw">Daerah<select id="ad">${DR.map(d=>`<option ${(u.daerah||'')===d?'selected':''}>${d}</option>`).join('')}</select></label>
+ <label class="mu">Username<input id="au" value="${esc(ed?un(u.email):'')}" placeholder="contoh: hp-a1" autocapitalize="none"></label>
+ <label class="mu" id="anw">Nama HP (tampil di dashboard)<input id="an" value="${esc(u.phone_nama||'')}" placeholder="contoh: HP A1"></label>
+ <label class="mu">Password${ed?' baru (kosongkan jika tidak diubah)':''}<input id="ap" placeholder="minimal 6 karakter"></label>
+ <div class="row" style="margin-top:18px"><button class="sec" onclick="this.closest('.md').remove()">Batal</button><button id="as" style="flex:1">Simpan</button></div></div>`;
+ const g=k=>el.querySelector(k),sh=()=>{const r=g('#ar').value;g('#anw').style.display=r==='terminal'?'block':'none';g('#adw').style.display=pu&&r!=='pusat'?'block':'none'};g('#ar').onchange=sh;sh();
+ g('#as').onclick=async()=>{const u0=g('#au').value.trim(),pw=g('#ap').value,nm=g('#an').value.trim(),rl=g('#ar').value;
+  if(!u0)return toast('Username wajib diisi');if((!ed||pw)&&pw.length<6)return toast('Password minimal 6 karakter');const em=mail(u0),dr=pu&&rl!=='pusat'?g('#ad').value:null;
+  const {error}=ed?await sb.rpc('admin_update_user',{p_id:id,p_email:em,p_password:pw||null,p_nama:nm||null,p_daerah:dr}):await sb.rpc('admin_create_user',{p_email:em,p_password:pw,p_role:rl,p_nama:nm||null,p_daerah:dr});
+  if(error)return toast(error.message);await audit(ed?'UBAH AKUN':'TAMBAH AKUN',em+(dr?' • daerah '+dr:''));el.remove();toast('Akun tersimpan');await refreshActive(true);akun()}}
+async function delAk(id){const u=AK.find(x=>x.id===id);if(!confirm(`Hapus akun ${un(u.email)}? Akun ini tidak bisa masuk lagi.`))return;
+ const {error}=await sb.rpc('admin_delete_user',{p_id:id});if(error)return toast(error.message);await audit('HAPUS AKUN',u.email);toast('Akun dihapus');await refreshActive(true);akun()}
+
+boot();
+</script>
+</body>
+</html>
