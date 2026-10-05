@@ -51,6 +51,14 @@ table{font-size:12px;border-radius:10px;table-layout:auto}th,td{padding:6px 5px;
 .cc .ac{display:flex;flex-direction:column;gap:4px;flex:none}.cc .ac button{padding:3px 10px;font-size:11px;border-radius:7px}.cc .rt{text-align:right;flex:none;font-size:12.5px}.cc .rt .ac{flex-direction:row;margin-top:5px;justify-content:flex-end}
 .flt{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;max-width:720px}.flt input,.flt select{padding:7px 8px;font-size:12.5px}.flt button{padding:7px 6px;font-size:12.5px}.pw{font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--tx);user-select:all}
 @media(max-width:860px){.dsk{display:none}.cl{display:block}}
+#tc{position:fixed;top:calc(14px + env(safe-area-inset-top));right:14px;z-index:90;display:flex;flex-direction:column;gap:8px;width:min(360px,calc(100vw - 24px));pointer-events:none}
+.tt{pointer-events:auto;cursor:pointer;position:relative;overflow:hidden;background:#fff;border:1px solid var(--ln);border-left:4px solid var(--c);border-radius:12px;padding:10px 12px;display:flex;gap:10px;align-items:flex-start;box-shadow:0 12px 32px #0e1d1830;animation:tin .28s cubic-bezier(.2,.9,.3,1.1);transition:opacity .2s,transform .2s}
+.tt.out{opacity:0;transform:translateX(24px)}.tt .ti{width:26px;height:26px;border-radius:50%;background:var(--cb);color:var(--c);display:grid;place-items:center;flex:none;font-weight:700;font-size:14px}
+.tt .tx{min-width:0;padding-top:1px}.tt b{display:block;font-size:13px;line-height:1.25}.tt span{display:block;font-size:12.5px;color:var(--mu);line-height:1.4;word-break:break-word}
+.tt i{position:absolute;left:0;bottom:0;height:3px;background:var(--c);opacity:.55;animation:tbar var(--d) linear forwards}
+@keyframes tin{from{opacity:0;transform:translateY(-12px) scale(.97)}}@keyframes tbar{from{width:100%}to{width:0}}
+.dg{text-align:left}.dgi{width:42px;height:42px;border-radius:50%;background:#dff5ea;color:var(--em);display:grid;place-items:center;font-weight:700;font-size:20px;margin-bottom:10px}.dgi.d{background:#fde8e8;color:var(--rd)}.dg h2{font-size:18px}.dge{color:var(--rd);font-size:12.5px;min-height:16px;margin:6px 0 0}
+@media(max-width:860px){#tc{right:12px;left:12px;width:auto}}
 </style>
 </head>
 <body>
@@ -82,7 +90,25 @@ function hRange(id){const g=k=>{const e=document.getElementById(id+k);return e&&
  if(m&&d){const a=fromHij(y,m,d);if(a!=null)return [a,a+DAY]}
  if(m)return [fromHij(y,m,1),m===12?fromHij(y+1,1,1):fromHij(y,m+1,1)];return [fromHij(y,1,1),fromHij(y+1,1,1)]}
 
-function toast(m){const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',4000)}
+const TT={s:['Berhasil','✓','#16a36a','#dff5ea'],e:['Gagal','!','#e5484d','#fde8e8'],w:['Perhatian','!','#d98a00','#fdf0d5'],i:['Info','i','#2f6fd0','#e3edfb'],a:['Batas waktu','🔔','#e5484d','#fde8e8']};
+function kindOf(m){if(/^🔔/.test(m))return 'a';if(/^🟠/.test(m))return 'w';if(/^✅|tersimpan|dihapus|diimpor|ditambahkan|berhasil|dibatalkan|dinonaktifkan/i.test(m))return 's';
+ if(/gagal|salah|tidak valid|tidak ditemukan|wajib|harus|minimal|error|ditolak/i.test(m))return 'e';if(/^isi |tidak bisa|hanya bisa|pembatalan|semua hp|sedang dipakai/i.test(m))return 'w';return 'i'}
+function toast(m,k){m=String(m||'');k=k||kindOf(m);const [tt,ico,c,cb]=TT[k],clean=m.replace(/^(🔔|🟠|✅)\s*/,'');
+ let box=document.getElementById('tc');if(!box){box=document.createElement('div');box.id='tc';document.body.appendChild(box)}
+ while(box.children.length>=4)box.firstChild.remove();
+ const d={s:3000,i:3500,w:5000,e:5500,a:9000}[k],el=document.createElement('div');el.className='tt';el.style.cssText=`--c:${c};--cb:${cb};--d:${d}ms`;
+ el.innerHTML=`<div class="ti">${ico}</div><div class="tx"><b>${tt}</b><span>${esc(clean)}</span></div><i></i>`;
+ const out=()=>{el.classList.add('out');setTimeout(()=>el.remove(),220)};el.onclick=out;box.appendChild(el);setTimeout(out,d)}
+/* dialog konfirmasi / isian bergaya aplikasi (pengganti confirm & prompt bawaan browser) */
+function dlg(o){return new Promise(res=>{const F=o.fields||[],el=document.createElement('div');el.className='md';el.style.zIndex=80;document.body.appendChild(el);
+ el.innerHTML=`<div class="dg"><div class="dgi ${o.danger?'d':''}">${o.danger?'!':'?'}</div><h2>${esc(o.title)}</h2>${o.msg?`<p class="mu" style="white-space:pre-line;margin:4px 0 0">${esc(o.msg)}</p>`:''}${F.map((f,i)=>`<label class="mu">${esc(f.label)}<input data-i="${i}" placeholder="${esc(f.ph||'')}" autocomplete="off"></label>`).join('')}<p class="dge"></p>
+ <div class="row" style="margin-top:14px"><button class="sec" data-a="0">${o.cancel||'Batal'}</button><button class="${o.danger?'bad':''}" data-a="1" style="flex:1">${o.ok||'Ya'}</button></div></div>`;
+ const close=v=>{el.remove();res(v)},ins=[...el.querySelectorAll('input')];
+ const submit=()=>{const v=ins.map(i=>i.value.trim()),b=F.findIndex((f,i)=>f.req&&!v[i]);if(b>=0){el.querySelector('.dge').textContent=F[b].label+' wajib diisi';ins[b].focus();return}close(F.length?v:true)};
+ el.querySelector('[data-a="1"]').onclick=submit;el.querySelector('[data-a="0"]').onclick=()=>close(null);
+ el.onclick=e=>{if(e.target===el)close(null)};el.onkeydown=e=>{if(e.key==='Enter')submit();if(e.key==='Escape')close(null)};
+ (ins[0]||el.querySelector('[data-a="1"]')).focus()})}
+const ask=(title,msg,o)=>dlg({title,msg,...(o||{})});
 let ac;function beep(n=3){try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();for(let i=0;i<n;i++){const o=ac.createOscillator(),g=ac.createGain();o.frequency.value=880;o.connect(g);g.connect(ac.destination);const t=ac.currentTime+i*.45;g.gain.setValueAtTime(.4,t);g.gain.setValueAtTime(0,t+.3);o.start(t);o.stop(t+.32)}}catch(e){}}
 async function audit(aksi,detail){await sb.from('audit').insert({admin_email:S.user.email,aksi,detail})}
 function csv(rows,name){const c=rows.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+c],{type:'text/csv'}));a.download=name;a.click()}
@@ -164,22 +190,26 @@ function tick(){
   else if(myPhone()&&c.phone_id===myPhone().id){
    const tm=$('#tm');if(tm){tm.classList.toggle('warn',e>=S.cfg.warn_min*60&&e<c.limit_sec);tm.classList.toggle('over',e>=c.limit_sec);
     const al=$('#al');if(al)al.textContent=e>=c.limit_sec?'⚠️ WAKTU '+fmt(c.limit_sec)+' TELAH TERCAPAI':e>=S.cfg.warn_min*60?'Waktu hampir habis':'';
-    if(e>=c.limit_sec&&Math.floor(e)%3===0&&navigator.vibrate)navigator.vibrate([400,150,400])}}}}
+    if(e>=c.limit_sec){const q=e-c.limit_sec,cy=c.id+'-'+Math.floor(q/8);if(q%8>=2.2&&S.vc!==cy){S.vc=cy;sayDone()}if(Math.floor(e)%3===0&&navigator.vibrate)navigator.vibrate([400,150,400])}}}}}
 /* ---------- ALARM HP TERMINAL ---------- */
 const wavURL=(a,R)=>{const h=new DataView(new ArrayBuffer(44)),w=(o,t)=>[...t].forEach((c,i)=>h.setUint8(o+i,c.charCodeAt(0)));
  w(0,'RIFF');h.setUint32(4,36+a.length,true);w(8,'WAVEfmt ');h.setUint32(16,16,true);h.setUint16(20,1,true);h.setUint16(22,1,true);h.setUint32(24,R,true);h.setUint32(28,R,true);h.setUint16(32,1,true);h.setUint16(34,8,true);w(36,'data');h.setUint32(40,a.length,true);
  return URL.createObjectURL(new Blob([h,a],{type:'audio/wav'}))};
 /* Satu file audio: hening sampai batas waktu, lalu bunyi beep berulang. Diputar sejak telepon dimulai sehingga tetap berjalan sebagai pemutar media saat aplikasi lain dibuka. */
-function mkAlarm(limit,warn){const R=4000,tot=Math.ceil(limit)+90,a=new Uint8Array(R*tot).fill(128);for(let i=0;i<a.length;i+=2)a[i]=129;
+const MSG='Waktu telepon sudah habis, terima kasih.';let VO=null;
+const pickVoice=()=>{try{const v=speechSynthesis.getVoices();VO=v.find(x=>/^id/i.test(x.lang))||v.find(x=>/indones/i.test(x.name))||null}catch(e){}};
+try{speechSynthesis.onvoiceschanged=pickVoice;pickVoice()}catch(e){}
+function sayDone(){try{if(!window.speechSynthesis||speechSynthesis.speaking)return;const u=new SpeechSynthesisUtterance(MSG);u.lang='id-ID';if(VO)u.voice=VO;u.rate=.92;u.volume=1;speechSynthesis.speak(u)}catch(e){}}
+function mkAlarm(limit,warn){const R=4000,tot=Math.ceil(limit)+300,a=new Uint8Array(R*tot).fill(128);for(let i=0;i<a.length;i+=2)a[i]=129;
  const beep=(t0,d)=>{for(let i=0;i<R*d;i++){const n=Math.floor(t0*R)+i;if(n<a.length)a[n]=128+(Math.sin(2*Math.PI*1000*i/R)>=0?115:-115)}};
- if(warn<limit)beep(warn,.4);for(let t=limit;t<tot-1;t+=.6)beep(t,.35);return wavURL(a,R)}
-function arm(){S.au=S.au||new Audio();S.au.src=wavURL(new Uint8Array(400).fill(128),4000);S.au.play().catch(()=>{})}
+ if(warn<limit)beep(warn,.4);for(let c=limit;c<tot-1;c+=8)for(let k=0;k<3;k++)beep(c+k*.6,.35);return wavURL(a,R)}
+function arm(){S.au=S.au||new Audio();S.au.src=wavURL(new Uint8Array(400).fill(128),4000);S.au.play().catch(()=>{});try{const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}catch(e){}}
 async function wake(){try{S.wl=await navigator.wakeLock.request('screen')}catch(e){}}
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&S.armed)wake()});
 function syncAudio(c){if(!S.au)return;
  if(!c){if(S.ac!==null){S.au.pause();S.ac=null}return}
  if(S.ac===c.id)return;S.ac=c.id;const e=(now()-new Date(c.started_at))/1000;
- S.au.src=mkAlarm(c.limit_sec,S.cfg.warn_min*60);S.au.onloadedmetadata=()=>{try{S.au.currentTime=Math.min(e,c.limit_sec+80)}catch(x){}};S.au.play().catch(()=>{});
+ S.au.src=mkAlarm(c.limit_sec,S.cfg.warn_min*60);S.au.onloadedmetadata=()=>{try{S.au.currentTime=Math.min(e,c.limit_sec+290)}catch(x){}};S.au.play().catch(()=>{});
  if(navigator.mediaSession&&window.MediaMetadata)navigator.mediaSession.metadata=new MediaMetadata({title:'Telepon aktif: '+c.santri.nama,artist:'KADA Telepon Santri'})}
 const LOCK=`<button class="xl" title="Khusus petugas" onclick="exitModal()"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button>`;
 async function goOffline(){try{const p=myPhone();if(p)await sb.from('phones').update({last_seen:null}).eq('id',p.id);if(S.pch)await sb.removeChannel(S.pch)}catch(e){}}
@@ -231,12 +261,12 @@ async function startModal(){
   await audit('MULAI',`${sel.nama} (${sel.id_santri}) • ${ph.nama} • ${T}${nomor?' • '+nomor:''}${hab?' • luar jatah: '+al:''}`);el.remove();await refreshActive()}}
 
 /* ---------- SELESAI / BATAL ---------- */
-async function finish(id){const c=S.active.find(x=>x.id===id);if(!confirm(`Selesaikan telepon ${c.santri.nama}?`))return;
+async function finish(id){const c=S.active.find(x=>x.id===id);if(!await ask('Selesaikan telepon?',`${c.santri.nama} · berjalan ${fmt((now()-new Date(c.started_at))/1000)}`,{ok:'Ya, selesai'}))return;
  const end=new Date(now());const {error}=await sb.from('calls').update({status:'selesai',ended_at:end.toISOString()}).eq('id',id);if(error)return toast('Gagal menyimpan');
  const dur=(end-new Date(c.started_at))/1000;const U=await usedFor([c.santri_id]);
  await audit('SELESAI',`${c.santri.nama} • ${fmt(dur)}`);toast(`✅ ${c.santri.nama}: ${Math.floor(dur/60)} menit ${Math.floor(dur%60)} detik • telepon ke ${U[c.santri_id]||1}/${S.cfg.quota}`);await refreshActive()}
 async function cancelCall(id){const c=S.active.find(x=>x.id===id);if((now()-new Date(c.started_at))/1000>60)return toast('Pembatalan hanya bisa dalam 1 menit pertama. Gunakan Selesai lalu Koreksi.');
- if(!confirm('Batalkan sesi? Jatah tidak terpotong.'))return;await sb.from('calls').update({status:'batal',ended_at:new Date(now()).toISOString()}).eq('id',id);await audit('BATAL',c.santri.nama);await refreshActive()}
+ if(!await ask('Batalkan sesi?','Jatah santri tidak terpotong.',{ok:'Ya, batalkan',danger:true}))return;await sb.from('calls').update({status:'batal',ended_at:new Date(now()).toISOString()}).eq('id',id);await audit('BATAL',c.santri.nama);await refreshActive()}
 
 /* ---------- SANTRI ---------- */
 const KOL=['id_santri','nama','kamar','kelas','tingkat','alamat','no_hp'];
@@ -274,12 +304,12 @@ async function impor(e){const f=e.target.files[0];if(!f)return;const rows=parseC
  const m={};let skip=0;rows.slice(1).forEach(r=>{const o={aktif:true};KOL.forEach(k=>o[k]=ix(k)<0?'':(r[ix(k)]||'').trim());o.kamar=o.kamar.toUpperCase();
   if(!o.id_santri||!o.nama)return;if(S.role!=='pusat'&&!o.kamar.startsWith(S.daerah)){skip++;return}m[o.id_santri]=o});
  const list=Object.values(m);if(!list.length)return toast('Tidak ada baris valid'+(skip?` (${skip} di luar daerah)`:''));
- if(!confirm(`Impor ${list.length} santri?${skip?`\n${skip} baris di luar daerah dilewati.`:''}`))return;toast('Mengimpor…');
+ if(!await ask('Impor data santri?',`${list.length} santri akan ditambahkan atau diperbarui.${skip?`\n${skip} baris di luar daerah dilewati.`:''}`,{ok:'Impor'}))return;toast('Mengimpor…');
  const ch=[];for(let i=0;i<list.length;i+=500)ch.push(list.slice(i,i+500));
  for(let i=0;i<ch.length;i+=4){const rs=await Promise.all(ch.slice(i,i+4).map(c=>sb.from('santri').upsert(c,{onConflict:'id_santri'})));const er=rs.find(r=>r.error);if(er)return toast('Gagal impor: '+er.error.message)}
  await audit('IMPOR SANTRI',list.length+' data');toast(list.length+' santri diimpor');santriTab()}
 const tpl=()=>csv([KOL,['1001','Ahmad Fauzan','12','7A','Tsanawiyah','Surabaya','08123456789']],'template-santri.csv');
-async function delS(id){if(!confirm('Nonaktifkan santri ini? Riwayat tetap tersimpan.'))return;const {error}=await sb.from('santri').update({aktif:false}).eq('id',id);if(error)return toast(error.message);await audit('NONAKTIF SANTRI','id '+id);loadSantriPage()}
+async function delS(id){if(!await ask('Nonaktifkan santri?','Riwayat telepon santri ini tetap tersimpan.',{ok:'Nonaktifkan',danger:true}))return;const {error}=await sb.from('santri').update({aktif:false}).eq('id',id);if(error)return toast(error.message);await audit('NONAKTIF SANTRI','id '+id);loadSantriPage()}
 
 /* ---------- RIWAYAT ---------- */
 function riwayat(){$('#main').innerHTML=hd('Riwayat telepon','Termasuk yang sedang berlangsung','<button class="sec sm" onclick="exportR()">CSV</button>')+`<div class="flt"><input id="rn" placeholder="Cari nama santri…" style="grid-column:span 3"><button onclick="loadR()">Cari</button><select id="rp"><option value="">Semua HP</option>${S.phones.map(p=>`<option value="${p.id}">${esc(p.nama)}</option>`).join('')}</select>${hPick('rh',true,false)}</div><div class="sc" style="margin-top:12px"><table id="rt" class="dsk"></table></div>`;
@@ -294,11 +324,11 @@ async function loadR(){$('#rt').innerHTML='<tr><td class="mu">Memuat…</td></tr
  const sj=x=>x.filter(Boolean).join(' · '),ph=r=>r.phones&&r.phones.nama,dv=r=>r.status==='batal'?'<span class="tag">Batal</span>':r.status==='aktif'?'<span class="tag r">Berlangsung</span>':`<b>${dr(r)}</b>`;
  $('#rt').parentNode.innerHTML='<table id="rt" class="dsk"><tr><th>Waktu</th><th>Santri</th><th>HP</th><th>Tujuan</th><th>Durasi</th><th></th></tr>'+(RR.map(r=>`<tr><td>${tgl(r.started_at)}</td><td>${esc(r.santri.nama)}<br><span class="mu">${esc(r.santri.id_santri)} · Kmr ${esc(r.santri.kamar)}</span></td><td>${esc(ph(r))}</td><td>${esc(r.tujuan)}${r.nomor?`<br><span class="mu">${esc(r.nomor)}</span>`:''}</td><td>${dv(r)}${r.luar_jatah?' <span class="tag r" title="'+esc(r.alasan)+'">luar jatah</span>':''}</td><td style="white-space:nowrap">${r.status==='selesai'?`<button class="sec sm" onclick="koreksi(${r.id})">Koreksi</button> `:''}${r.status!=='aktif'?`<button class="sec sm" onclick="delR(${r.id})">Hapus</button>`:''}</td></tr>`).join('')||'<tr><td colspan=6 class="mu">Belum ada riwayat untuk filter ini</td></tr>')+'</table><div class="cl">'+(RR.map(r=>`<div class="cc"><div class="bd"><div class="n">${esc(r.santri.nama)}${r.luar_jatah?' <span class="tag r" title="'+esc(r.alasan)+'">luar jatah</span>':''}</div><div class="s">${esc(sj([r.santri.id_santri,r.santri.kamar,ph(r),r.tujuan,r.nomor]))}</div><div class="s">${tgl(r.started_at)}</div></div><div class="rt">${dv(r)}<div class="ac">${r.status==='selesai'?`<button class="sec sm" onclick="koreksi(${r.id})">Koreksi</button>`:''}${r.status!=='aktif'?`<button class="sec sm" onclick="delR(${r.id})">Hapus</button>`:''}</div></div></div>`).join('')||'<p class="mu">Belum ada riwayat untuk filter ini</p>')+'</div>'}
 async function delR(id){const r=RR.find(x=>x.id===id);if(!r||r.status==='aktif')return toast('Telepon yang berlangsung tidak bisa dihapus. Gunakan Batal.');
- if(!confirm(`Hapus riwayat ini?\n${r.santri.nama} · ${tgl(r.started_at)}\nJatah santri bulan itu akan kembali bertambah.`))return;
+ if(!await ask('Hapus riwayat ini?',`${r.santri.nama} · ${tgl(r.started_at)}\nJatah santri bulan itu akan kembali bertambah.`,{ok:'Hapus',danger:true}))return;
  const {error}=await sb.from('calls').delete().eq('id',id);if(error)return toast('Gagal menghapus: '+error.message);
  await audit('HAPUS RIWAYAT',`${r.santri.nama} (${r.santri.id_santri}) • ${tgl(r.started_at)} • ${r.status}${r.nomor?' • '+r.nomor:''}`);toast('Riwayat dihapus');loadR()}
 function exportR(){csv([['Waktu','ID santri','Santri','Kamar','HP','Tujuan','Nomor','Durasi','Status','Alasan']].concat(RR.map(r=>[tgl(r.started_at),r.santri.id_santri,r.santri.nama,r.santri.kamar,r.phones&&r.phones.nama,r.tujuan,r.nomor,r.ended_at?fmt((new Date(r.ended_at)-new Date(r.started_at))/1000):'',r.status,r.alasan])),'riwayat-telepon.csv')}
-async function koreksi(id){const r=RR.find(x=>x.id===id);const m=prompt('Durasi yang benar (menit, boleh desimal):');if(!m||isNaN(m))return;const a=prompt('Alasan koreksi (wajib):');if(!a||!a.trim())return;
+async function koreksi(id){const r=RR.find(x=>x.id===id);const v=await ask('Koreksi durasi','Masukkan durasi yang benar beserta alasannya.',{ok:'Simpan',fields:[{label:'Durasi yang benar (menit, boleh desimal)',ph:'contoh: 4.5',req:1},{label:'Alasan koreksi',ph:'wajib diisi',req:1}]});if(!v)return;const m=v[0].replace(',','.'),a=v[1];if(isNaN(m)||+m<0)return toast('Durasi tidak valid');
  const {error}=await sb.from('calls').update({ended_at:new Date(new Date(r.started_at).getTime()+m*60000).toISOString()}).eq('id',id);if(error)return toast(error.message);await audit('KOREKSI',`${r.santri.nama}: durasi → ${m} menit. Alasan: ${a}`);loadR()}
 
 /* ---------- REKAP ---------- */
@@ -346,7 +376,7 @@ function akunForm(id){const u=AK.find(x=>x.id===id)||{},ed=!!id,pu=S.role==='pus
   if(!u0)return toast('Username wajib diisi');if((!ed||pw)&&pw.length<6)return toast('Password minimal 6 karakter');const em=mail(u0),dr=pu&&rl!=='pusat'?g('#ad').value:null;
   const {error}=ed?await sb.rpc('admin_update_user',{p_id:id,p_email:em,p_password:pw||null,p_nama:nm||null,p_daerah:dr}):await sb.rpc('admin_create_user',{p_email:em,p_password:pw,p_role:rl,p_nama:nm||null,p_daerah:dr});
   if(error)return toast(error.message);await audit(ed?'UBAH AKUN':'TAMBAH AKUN',em+(dr?' • daerah '+dr:''));el.remove();toast('Akun tersimpan');await refreshActive(true);akun()}}
-async function delAk(id){const u=AK.find(x=>x.id===id);if(!confirm(`Hapus akun ${un(u.email)}? Akun ini tidak bisa masuk lagi.`))return;
+async function delAk(id){const u=AK.find(x=>x.id===id);if(!await ask('Hapus akun?',`${un(u.email)} tidak akan bisa masuk lagi.`,{ok:'Hapus',danger:true}))return;
  const {error}=await sb.rpc('admin_delete_user',{p_id:id});if(error)return toast(error.message);await audit('HAPUS AKUN',u.email);toast('Akun dihapus');await refreshActive(true);akun()}
 
 boot();
