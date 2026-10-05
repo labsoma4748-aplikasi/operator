@@ -43,6 +43,10 @@ button.pick{display:block;width:100%;text-align:left;background:#fff;color:var(-
 @media(min-width:640px){.md{align-items:center}.md>div{border-radius:20px}}
 @media(max-width:860px){.side{inset:auto 0 0 0;width:auto;flex-direction:row;padding:4px 6px calc(4px + env(safe-area-inset-bottom));border-top:1px solid #ffffff1a}.brand,.me{display:none}.side nav{flex-direction:row;margin:0;gap:0}.side nav button{flex:1;flex-direction:column;gap:3px;font-size:10.5px;padding:8px 2px;justify-content:center}
 main{margin:0;padding:20px 14px 96px}.stats{grid-template-columns:repeat(2,1fr)}.kpi b{font-size:22px}#toast{bottom:90px}.lg{grid-template-columns:1fr}.lgL{padding:26px 22px;gap:22px}.lgL h1{font-size:26px}.lgL>small{display:none}}
+.rs{max-height:360px;overflow-y:auto;margin-top:6px;overscroll-behavior:contain}.rs .pick{padding:8px 12px}.wb{margin-top:10px;border-color:var(--wn);background:#fff8e8}.wb input{margin-top:8px}.nm{margin-top:10px;display:flex;justify-content:space-between;align-items:center;gap:10px;background:#f1f7f4}.nm b{font-size:16px;letter-spacing:.2px}
+@media(max-width:860px){body{font-size:13.5px}.hd{margin-bottom:14px}.hd h1{font-size:20px}.hd p{font-size:12.5px}main{padding:16px 12px 92px}.kpi{padding:12px;gap:10px}.kic{width:36px;height:36px}.kpi b{font-size:20px}.card{padding:12px}.t{font-size:32px}.sec-t{margin:20px 0 10px}
+button{padding:9px 13px;font-size:13.5px}input,select{padding:9px 11px;font-size:14px}.md>div{padding:18px 16px}
+table{font-size:12px;border-radius:10px;table-layout:auto}th,td{padding:6px 5px;line-height:1.35;word-break:break-word;vertical-align:top;white-space:normal}th{font-size:10.5px;letter-spacing:0}td[style]{white-space:normal!important}td button{margin:1px 0;padding:4px 8px;font-size:11.5px}.tag{font-size:10.5px;padding:1px 6px}}
 </style>
 </head>
 <body>
@@ -58,8 +62,22 @@ const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const now=()=>Date.now()+S.off;
 const fmt=s=>{s=Math.max(0,Math.floor(s));return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')};
-const monthStart=(m)=>{const d=m?new Date(m+'-01T00:00'):new Date(now());d.setDate(1);d.setHours(0,0,0,0);return d};
-const tgl=s=>new Date(s).toLocaleString('id-ID',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+const BH=['Muharam','Safar','Rabiulawal','Rabiulakhir','Jumadilawal','Jumadilakhir','Rajab','Syakban','Ramadan','Syawal','Zulkaidah','Zulhijah'],DAY=864e5,TZ=7*36e5;
+let HF;try{HF=new Intl.DateTimeFormat('en-u-ca-islamic-umalqura',{day:'numeric',month:'numeric',year:'numeric',timeZone:'Asia/Jakarta'})}catch(e){HF=new Intl.DateTimeFormat('en-u-ca-islamic',{day:'numeric',month:'numeric',year:'numeric',timeZone:'Asia/Jakarta'})}
+const hij=t=>{const p={};HF.formatToParts(new Date(+new Date(t)+(S.cfg.hijri_offset||0)*DAY)).forEach(x=>p[x.type]=x.value);return {y:parseInt(p.year),m:+p.month,d:+p.day}};
+const mid=t=>Math.floor((+t+TZ)/DAY)*DAY-TZ;
+function fromHij(y,m,d){const c=mid(Date.UTC(622,6,19)+((y-1)*354.367+(m-1)*29.53+d-1)*DAY);for(let k=-6;k<=6;k++){const t=c+k*DAY,h=hij(t);if(h.y===y&&h.m===m&&h.d===d)return t}return null}
+const monthStart=()=>{const h=hij(now());return new Date(fromHij(h.y,h.m,1))};
+const hariN=t=>new Date(t).toLocaleDateString('id-ID',{weekday:'long',timeZone:'Asia/Jakarta'});
+const fmtH=t=>{const h=hij(t);return `${h.d} ${BH[h.m-1]} ${h.y} H`};
+const jam=t=>new Date(t).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Jakarta'}).replace(':','.');
+const tgl=t=>fmtH(t)+', '+jam(t);
+function hPick(id,day,def){const h=hij(now());return (day?`<select id="${id}d"><option value="">Hari</option>${[...Array(30)].map((_,i)=>`<option>${i+1}</option>`).join('')}</select>`:'')+
+ `<select id="${id}m">${def?'':'<option value="">Bulan</option>'}${BH.map((n,i)=>`<option value="${i+1}" ${def&&h.m===i+1?'selected':''}>${n}</option>`).join('')}</select><select id="${id}y">${def?'':'<option value="">Tahun</option>'}${[h.y-2,h.y-1,h.y,h.y+1].map(y=>`<option ${def&&y===h.y?'selected':''}>${y}</option>`).join('')}</select>`}
+function hRange(id){const g=k=>{const e=document.getElementById(id+k);return e&&e.value?+e.value:0};let y=g('y'),m=g('m'),d=g('d');if(!y&&!m&&!d)return null;if(!y)y=hij(now()).y;
+ if(m&&d){const a=fromHij(y,m,d);if(a!=null)return [a,a+DAY]}
+ if(m)return [fromHij(y,m,1),m===12?fromHij(y+1,1,1):fromHij(y,m+1,1)];return [fromHij(y,1,1),fromHij(y+1,1,1)]}
+
 function toast(m){const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',4000)}
 let ac;function beep(n=3){try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();for(let i=0;i<n;i++){const o=ac.createOscillator(),g=ac.createGain();o.frequency.value=880;o.connect(g);g.connect(ac.destination);const t=ac.currentTime+i*.45;g.gain.setValueAtTime(.4,t);g.gain.setValueAtTime(0,t+.3);o.start(t);o.stop(t+.32)}}catch(e){}}
 async function audit(aksi,detail){await sb.from('audit').insert({admin_email:S.user.email,aksi,detail})}
@@ -85,13 +103,17 @@ async function boot(){
  S.role=pr.data.role;S.daerah=pr.data.daerah;await loadBase();
  sb.channel('calls').on('postgres_changes',{event:'*',schema:'public',table:'calls'},()=>refreshActive()).subscribe();
  setInterval(refreshActive,15000);setInterval(tick,1000);
- if(S.role==='terminal'){const p=myPhone();if(p){const ping=()=>sb.from('phones').update({last_seen:new Date(now()).toISOString()}).eq('id',p.id);ping();setInterval(ping,30000)}}
+ S.on=new Set();
+ if(S.role==='terminal'){const p=myPhone();if(p){const ping=()=>sb.from('phones').update({last_seen:new Date(now()).toISOString()}).eq('id',p.id);ping();setInterval(ping,20000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')ping()});
+  S.pch=sb.channel('hp-presence',{config:{presence:{key:String(p.id)}}});S.pch.subscribe(st=>{if(st==='SUBSCRIBED')S.pch.track({at:Date.now()})})}}
+ else{const ch=sb.channel('hp-presence');ch.on('presence',{event:'sync'},()=>{S.on=new Set(Object.keys(ch.presenceState()));const g=sig();if(g!==S.sig){S.sig=g;if(S.tab==='dash')render()}}).subscribe()}
  render()}
 const myPhone=()=>S.phones.find(p=>p.email===S.user.email);
 async function loadBase(){
  const [c,p,a]=await Promise.all([sb.from('settings').select('*').eq('id',1).single(),sb.from('phones').select('*').eq('aktif',true).order('id'),sb.from('calls').select('*,santri(nama,kamar),phones(nama)').eq('status','aktif')]);
  if(c.data)S.cfg=c.data;S.phones=p.data||[];S.active=a.data||[];S.sig=sig()}
-const sig=()=>S.active.map(c=>c.id+c.status).join()+'|'+S.phones.map(p=>(p.last_seen&&now()-new Date(p.last_seen)<90000)?1:0).join();
+const isOn=p=>(S.on&&S.on.has(String(p.id)))||!!(p.last_seen&&now()-new Date(p.last_seen)<75000);
+const sig=()=>S.active.map(c=>c.id+c.status).join()+'|'+S.phones.map(p=>isOn(p)?1:0).join();
 /* Layar hanya digambar ulang jika status HP benar-benar berubah, dan hanya di Dashboard/HP terminal. Tab lain & isian form tidak tersentuh. */
 async function refreshActive(quiet){
  const {data}=await sb.from('calls').select('*,santri(nama,kamar),phones(nama)').eq('status','aktif');if(data)S.active=data;
@@ -116,15 +138,15 @@ function render(){if(S.role==='terminal')return terminalView();
  <div class="me"><span class="av">${esc(un(S.user.email)[0].toUpperCase())}</span><div><b>${esc(un(S.user.email))}</b><small>${S.role==='pusat'?'Admin Pusat':'Admin Daerah '+S.daerah}</small></div><button title="Keluar" onclick="logout()">${ic('out')}</button></div></aside><main id="main"></main>`;
  ({dash,santri:santriTab,riwayat,rekap,akun,set:setTab})[S.tab]()}
 const phStatus=p=>{const c=S.active.find(x=>x.phone_id===p.id);if(c){const e=(now()-new Date(c.started_at))/1000;return {c,k:e>=c.limit_sec?'on over':e>=S.cfg.warn_min*60?'warn':'on'}}
- return {c:null,k:(!p.last_seen||now()-new Date(p.last_seen)>90000)?'off':''}};
+ return {c:null,k:isOn(p)?'':'off'}};
 async function dash(){
  const td=new Date(now());td.setHours(0,0,0,0);
  const st=S.phones.map(phStatus);const kpi=(i,v,l,c,id='')=>`<div class="kpi"><span class="kic ${c}">${ic(i)}</span><div><b id="${id}">${v}</b><small>${l}</small></div></div>`;
- $('#main').innerHTML=hd('Beranda',S.role==='pusat'?'Semua daerah':'Daerah '+S.daerah,`<button onclick="startModal()">${ic('plus')}Mulai telepon</button>`)+
- `<div class="stats">${kpi('phone',st.filter(x=>x.c).length,'Sedang telepon','r')}${kpi('ok',st.filter(x=>!x.c&&x.k!=='off').length,'HP tersedia','g')}${kpi('riwayat','…','Telepon hari ini','b','k3')}${kpi('santri','…','Total santri','n','k4')}</div>
- <h3 class="sec-t">Status HP</h3><div class="grid">${S.phones.map((p,i)=>{const s=st[i],c=s.c;return `<div class="card ph ${s.k}"><div class="top"><span class="av">${ic('phone')}</span><b>${esc(p.nama)}${S.role==='pusat'&&p.daerah?` <span class="tag">${p.daerah}</span>`:''}</b><span class="pill">${c?(s.k.includes('over')?'Batas lewat':s.k==='warn'?'Hampir batas':'Sedang telepon'):s.k==='off'?'Offline':'Tersedia'}</span></div>
- ${c?`<div class="who">${esc(c.santri.nama)}</div><div class="mu">Kamar ${esc(c.santri.kamar)} · dengan ${esc(c.tujuan)}</div><div class="t" data-s="${c.started_at}" data-l="${c.limit_sec}">00:00</div><div class="bar"><i></i></div><div class="mu" style="margin:6px 0 12px">Batas ${fmt(c.limit_sec)}</div>
- <div class="row"><button class="bad" onclick="finish(${c.id})">Selesai</button><button class="sec" onclick="cancelCall(${c.id})">Batal</button></div>`:'<div class="mu" style="padding:18px 0 6px">Siap dipakai</div>'}</div>`}).join('')||'<p class="mu">Belum ada HP. Tambahkan lewat menu Akun.</p>'}</div>`;tick();
+ $('#main').innerHTML=hd('Beranda',(S.role==='pusat'?'Semua daerah':'Daerah '+S.daerah)+' · '+hariN(now())+', '+fmtH(now()),`<button onclick="startModal()">${ic('plus')}Mulai telepon</button>`)+
+ `<div class="stats">${kpi('phone',st.filter(x=>x.c).length,'Sedang telepon','r')}${kpi('ok',st.filter(x=>!x.c&&x.k!=='off').length,'HP online','g')}${kpi('riwayat','…','Telepon hari ini','b','k3')}${kpi('santri','…','Total santri','n','k4')}</div>
+ <h3 class="sec-t">Status HP</h3><div class="grid">${S.phones.map((p,i)=>{const s=st[i],c=s.c;return `<div class="card ph ${s.k}"><div class="top"><span class="av">${ic('phone')}</span><b>${esc(p.nama)}${S.role==='pusat'&&p.daerah?` <span class="tag">${p.daerah}</span>`:''}</b><span class="pill">${c?(s.k.includes('over')?'Batas lewat':s.k==='warn'?'Hampir batas':'Sedang telepon'):s.k==='off'?'Offline':'Online'}</span></div>
+ ${c?`<div class="who">${esc(c.santri.nama)}</div><div class="mu">Kamar ${esc(c.santri.kamar)} · dengan ${esc(c.tujuan)}${c.nomor?' · '+esc(c.nomor):''}</div><div class="t" data-s="${c.started_at}" data-l="${c.limit_sec}">00:00</div><div class="bar"><i></i></div><div class="mu" style="margin:6px 0 12px">Batas ${fmt(c.limit_sec)}</div>
+ <div class="row"><button class="bad" onclick="finish(${c.id})">Selesai</button><button class="sec" onclick="cancelCall(${c.id})">Batal</button></div>`:`<div class="mu" style="padding:18px 0 6px">${s.k==='off'?'Belum login':'Siap dipakai'}</div>`}</div>`}).join('')||'<p class="mu">Belum ada HP. Tambahkan lewat menu Akun.</p>'}</div>`;tick();
  const [a,b]=await Promise.all([sb.from('calls').select('id',{count:'exact',head:true}).neq('status','batal').gte('started_at',td.toISOString()),sb.from('santri').select('id',{count:'exact',head:true}).eq('aktif',true)]);
  const k3=$('#k3'),k4=$('#k4');if(k3)k3.textContent=a.count||0;if(k4)k4.textContent=(b.count||0).toLocaleString('id-ID')}
 
@@ -156,9 +178,10 @@ function syncAudio(c){if(!S.au)return;
  S.au.src=mkAlarm(c.limit_sec,S.cfg.warn_min*60);S.au.onloadedmetadata=()=>{try{S.au.currentTime=Math.min(e,c.limit_sec+80)}catch(x){}};S.au.play().catch(()=>{});
  if(navigator.mediaSession&&window.MediaMetadata)navigator.mediaSession.metadata=new MediaMetadata({title:'Telepon aktif: '+c.santri.nama,artist:'KADA Telepon Santri'})}
 const LOCK=`<button class="xl" title="Khusus petugas" onclick="exitModal()"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button>`;
+async function goOffline(){try{const p=myPhone();if(p)await sb.from('phones').update({last_seen:null}).eq('id',p.id);if(S.pch)await sb.removeChannel(S.pch)}catch(e){}}
 function exitModal(){const el=document.createElement('div');el.className='md';document.body.appendChild(el);
  el.innerHTML=`<div><h2>Keluar dari HP ini</h2><p class="mu">Khusus petugas. Masukkan password akun ${esc(un(S.user.email))}.</p><input id="xp" type="password" placeholder="Password akun HP" autocomplete="off"><p id="xe" style="color:var(--rd);min-height:20px;margin:6px 0 0"></p><div class="row"><button class="sec" onclick="this.closest('.md').remove()">Batal</button><button id="xo">Keluar</button></div></div>`;
- const go=async()=>{const {error}=await sb.auth.signInWithPassword({email:S.user.email,password:el.querySelector('#xp').value});if(error){el.querySelector('#xe').textContent='Password salah';return}logout()};
+ const go=async()=>{const {error}=await sb.auth.signInWithPassword({email:S.user.email,password:el.querySelector('#xp').value});if(error){el.querySelector('#xe').textContent='Password salah';return}await goOffline();logout()};
  el.querySelector('#xo').onclick=go;el.querySelector('#xp').onkeydown=e=>{if(e.key==='Enter')go()};el.querySelector('#xp').focus()}
 function terminalView(){const p=myPhone();
  if(!p){$('#app').innerHTML=`<div class="tm"><h2>HP belum terdaftar</h2><p>Akun ${esc(S.user.email)} belum dipasangkan dengan HP. Hubungi admin.</p>${LOCK}</div>`;return}
@@ -172,29 +195,36 @@ async function usedFor(ids){if(!ids.length)return {};const {data}=await sb.from(
 async function startModal(){
  const free=S.phones.filter(p=>!S.active.some(c=>c.phone_id===p.id));
  if(!free.length)return toast('Semua HP sedang dipakai');
- let P=free[0].id,T='Wali',busy=false,rows=[],U={},seq=0,tm;
+ let P=null,T='Wali',busy=false,rows=[],U={},seq=0,tm,sel=null,ot='',al='';
  const el=document.createElement('div');el.className='md';document.body.appendChild(el);
- el.innerHTML=`<div><h2>Mulai telepon</h2><p class="mu">Ketik ID santri, lalu ketuk namanya untuk langsung memulai. Durasi ${S.cfg.limit_min} menit.</p>
- <input id="q" placeholder="ID santri…" autocomplete="off"><div id="res"></div>
- <p class="mu">HP yang dipakai</p><div class="chips" id="cp"></div><p class="mu">Yang ditelepon</p><div class="chips" id="ct"></div>
- <button class="sec" style="width:100%;margin-top:10px" onclick="this.closest('.md').remove()">Tutup</button></div>`;
- const chips=()=>{el.querySelector('#cp').innerHTML=free.map(p=>`<button class="${P===p.id?'on':''}" data-p="${p.id}">${esc(p.nama)}${S.role==='pusat'?' ('+p.daerah+')':''}</button>`).join('');
-  el.querySelector('#ct').innerHTML=['Ayah','Ibu','Wali','Kakak','Lainnya'].map(t=>`<button class="${T===t?'on':''}" data-t="${t}">${t}</button>`).join('');
-  el.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{P=+b.dataset.p;chips()});el.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{T=b.dataset.t;chips()})};chips();
- const go=async s=>{if(busy)return;const cand=free.filter(p=>p.daerah===s.daerah),ph=cand.find(p=>p.id===P)||cand[0];
-  if(!ph)return toast(`Tidak ada HP kosong untuk daerah ${s.daerah}`);const n=U[s.id]||0,hab=n>=S.cfg.quota;let alasan=null;
-  if(hab){alasan=prompt(`${s.nama} sudah ${n}/${S.cfg.quota} kali bulan ini.\nIzin khusus? Isi alasan:`);if(!alasan||!alasan.trim())return}
-  busy=true;const {error}=await sb.from('calls').insert({santri_id:s.id,phone_id:ph.id,tujuan:T,limit_sec:S.cfg.limit_min*60,admin_id:S.user.id,luar_jatah:hab,alasan});
+ el.innerHTML=`<div><h2>Mulai telepon</h2><p class="mu">Cari dengan ID atau nama santri. Durasi ${S.cfg.limit_min} menit.</p>
+ <input id="q" placeholder="ID atau nama santri…" autocomplete="off"><div id="res" class="rs"></div><div id="sel"></div>
+ <div class="row" style="margin-top:14px"><button class="sec" onclick="this.closest('.md').remove()">Tutup</button><button id="go" style="flex:1" disabled>▶ Mulai telepon</button></div></div>`;
+ const q=el.querySelector('#q'),res=el.querySelector('#res'),box=el.querySelector('#sel'),go=el.querySelector('#go');q.focus();
+ const drawSel=()=>{if(!sel){box.innerHTML='';go.disabled=true;res.style.display='';return}
+  const n=U[sel.id]||0,hab=n>=S.cfg.quota,cand=free.filter(p=>p.daerah===sel.daerah);if(!cand.find(p=>p.id===P))P=cand[0]?cand[0].id:null;res.style.display='none';
+  box.innerHTML=`<div class="card" style="margin-top:10px"><div class="row" style="flex-wrap:nowrap"><div style="flex:1;min-width:0"><b>${esc(sel.nama)}</b><br><span class="mu">${esc(sel.id_santri)} · Kamar ${esc(sel.kamar)} · telepon ${n}/${S.cfg.quota}</span></div><button class="sec sm" id="chg">Ganti</button></div></div>
+  ${hab?`<div class="card wb"><b>Jatah bulan ini sudah habis</b><input id="al" placeholder="Alasan izin khusus (wajib)" value="${esc(al)}"></div>`:''}
+  ${cand.length>1?`<p class="mu">HP yang dipakai</p><div class="chips">${cand.map(p=>`<button class="${P===p.id?'on':''}" data-p="${p.id}">${esc(p.nama)}${isOn(p)?'':' (offline)'}</button>`).join('')}</div>`:cand.length?'':`<p class="mu" style="color:var(--rd)">Tidak ada HP kosong untuk daerah ${esc(sel.daerah)}</p>`}
+  <p class="mu">Yang ditelepon</p><div class="chips">${['Ayah','Ibu','Wali','Kakak','Lainnya'].map(t=>`<button class="${T===t?'on':''}" data-t="${t}">${t}</button>`).join('')}</div>
+  <div class="card nm"><span class="mu">Nomor wali</span><b>${sel.no_hp?esc(sel.no_hp):'Belum terisi'}</b></div>
+  <label class="mu">Nomor lain yang dihubungi (opsional)<input id="ot" inputmode="tel" placeholder="Isi hanya jika bukan nomor wali di atas" value="${esc(ot)}"></label>`;
+  go.disabled=!P;box.querySelector('#chg').onclick=()=>{sel=null;drawSel();q.focus()};
+  box.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{P=+b.dataset.p;drawSel()});box.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{T=b.dataset.t;drawSel()});
+  box.querySelector('#ot').oninput=e=>ot=e.target.value;const a=box.querySelector('#al');if(a)a.oninput=e=>al=e.target.value};
+ const draw=()=>{res.innerHTML=rows.map(s=>`<button class="pick" data-id="${s.id}"><b>${esc(s.nama)}</b><br><span class="mu">${esc(s.id_santri)} · Kamar ${esc(s.kamar)} · ${esc(s.tingkat)} ${esc(s.kelas)} · ${U[s.id]||0}/${S.cfg.quota}${(U[s.id]||0)>=S.cfg.quota?' · JATAH HABIS':''}</span></button>`).join('')||(q.value.trim()?'<p class="mu">Santri tidak ditemukan</p>':'');
+  res.querySelectorAll('.pick').forEach(b=>b.onclick=()=>{sel=rows.find(s=>s.id==b.dataset.id);ot='';al='';drawSel()})};
+ const find=async()=>{const v=q.value.trim().replace(/[%,()]/g,' ').trim(),my=++seq;if(!v){rows=[];draw();return}
+  let qq=sb.from('santri').select('id,id_santri,nama,kamar,kelas,tingkat,daerah,no_hp').eq('aktif',true);
+  qq=/^\d/.test(v)?qq.or(`id_santri.ilike.${v}%,nama.ilike.%${v}%`):v.split(/\s+/).reduce((x,w)=>x.ilike('nama',`%${w}%`),qq);
+  const {data}=await qq.order('nama').limit(50);if(my!==seq)return;rows=(data||[]).sort((a,b)=>(b.id_santri===v)-(a.id_santri===v));U=await usedFor(rows.map(r=>r.id));if(my===seq)draw()};
+ q.oninput=()=>{clearTimeout(tm);tm=setTimeout(find,200)};
+ q.onkeydown=e=>{if(e.key==='Enter'){clearTimeout(tm);find().then(()=>{if(rows.length===1||(rows[0]&&rows[0].id_santri===q.value.trim())){sel=rows[0];ot='';al='';drawSel()}})}};
+ go.onclick=async()=>{if(busy||!sel||!P)return;const n=U[sel.id]||0,hab=n>=S.cfg.quota;if(hab&&!al.trim())return toast('Isi alasan izin khusus');
+  const ph=S.phones.find(p=>p.id===P),nomor=ot.trim()||sel.no_hp||null;busy=true;
+  const {error}=await sb.from('calls').insert({santri_id:sel.id,phone_id:P,tujuan:T,nomor,limit_sec:S.cfg.limit_min*60,admin_id:S.user.id,luar_jatah:hab,alasan:hab?al:null});
   if(error){busy=false;return toast(error.code==='23505'?'Santri atau HP ini sedang dipakai':error.message)}
-  await audit('MULAI',`${s.nama} (${s.id_santri}) • ${ph.nama} • ${T}${hab?' • luar jatah: '+alasan:''}`);el.remove();await refreshActive()};
- const q=el.querySelector('#q'),res=el.querySelector('#res');q.focus();
- const draw=()=>{res.innerHTML=rows.map(s=>`<button class="pick" data-id="${s.id}"><b>${esc(s.id_santri)}</b> ${esc(s.nama)}<br><span class="mu">Kamar ${esc(s.kamar)} · ${esc(s.tingkat)} ${esc(s.kelas)} · telepon ${U[s.id]||0}/${S.cfg.quota}${(U[s.id]||0)>=S.cfg.quota?' · JATAH HABIS':''}</span></button>`).join('')||'<p class="mu">ID tidak ditemukan</p>';
-  res.querySelectorAll('.pick').forEach(b=>b.onclick=()=>go(rows.find(s=>s.id==b.dataset.id)))};
- const find=async()=>{const v=q.value.trim().replace(/[%,()]/g,' ');const my=++seq;if(!v){res.innerHTML='';rows=[];return}
-  const {data}=await sb.from('santri').select('id,id_santri,nama,kamar,kelas,tingkat,daerah').eq('aktif',true).or(`id_santri.ilike.${v}%,nama.ilike.%${v}%`).order('id_santri').limit(6);
-  if(my!==seq)return;rows=(data||[]).sort((a,b)=>(b.id_santri===v)-(a.id_santri===v));U=await usedFor(rows.map(r=>r.id));if(my===seq)draw()};
- q.oninput=()=>{clearTimeout(tm);tm=setTimeout(find,180)};
- q.onkeydown=e=>{if(e.key==='Enter'){clearTimeout(tm);find().then(()=>{if(rows.length===1||(rows[0]&&rows[0].id_santri===q.value.trim()))go(rows[0])})}}}
+  await audit('MULAI',`${sel.nama} (${sel.id_santri}) • ${ph.nama} • ${T}${nomor?' • '+nomor:''}${hab?' • luar jatah: '+al:''}`);el.remove();await refreshActive()}}
 
 /* ---------- SELESAI / BATAL ---------- */
 async function finish(id){const c=S.active.find(x=>x.id===id);if(!confirm(`Selesaikan telepon ${c.santri.nama}?`))return;
@@ -247,25 +277,25 @@ const tpl=()=>csv([KOL,['1001','Ahmad Fauzan','12','7A','Tsanawiyah','Surabaya',
 async function delS(id){if(!confirm('Nonaktifkan santri ini? Riwayat tetap tersimpan.'))return;const {error}=await sb.from('santri').update({aktif:false}).eq('id',id);if(error)return toast(error.message);await audit('NONAKTIF SANTRI','id '+id);loadSantriPage()}
 
 /* ---------- RIWAYAT ---------- */
-function riwayat(){$('#main').innerHTML=hd('Riwayat telepon','Semua panggilan, termasuk yang sedang berlangsung')+`<div class="row"><input id="rn" placeholder="Nama santri"><select id="rp"><option value="">Semua HP</option>${S.phones.map(p=>`<option value="${p.id}">${esc(p.nama)}</option>`).join('')}</select><input id="rd" type="date"><button onclick="loadR()">Cari</button><button class="sec" onclick="exportR()">CSV</button></div><div class="sc" style="margin-top:14px"><table id="rt"></table></div>`;
+function riwayat(){$('#main').innerHTML=hd('Riwayat telepon','Semua panggilan, termasuk yang sedang berlangsung')+`<div class="row"><input id="rn" placeholder="Nama santri"><select id="rp"><option value="">Semua HP</option>${S.phones.map(p=>`<option value="${p.id}">${esc(p.nama)}</option>`).join('')}</select>${hPick('rh',true,false)}<button onclick="loadR()">Cari</button><button class="sec" onclick="exportR()">CSV</button></div><div class="sc" style="margin-top:14px"><table id="rt"></table></div>`;
  $('#rn').onkeydown=e=>{if(e.key==='Enter')loadR()};loadR()}
 let RR=[];
 async function loadR(){$('#rt').innerHTML='<tr><td class="mu">Memuat…</td></tr>';
  let q=sb.from('calls').select(`*,santri${$('#rn').value.trim()?'!inner':''}(id_santri,nama,kamar),phones(nama)`).order('started_at',{ascending:false}).limit(200);
- const n=$('#rn').value.trim().replace(/[%,()]/g,' '),p=$('#rp').value,d=$('#rd').value;if(n)q=q.ilike('santri.nama','%'+n+'%');if(p)q=q.eq('phone_id',p);
- if(d){const a=new Date(d+'T00:00'),b=new Date(a.getTime()+864e5);q=q.gte('started_at',a.toISOString()).lt('started_at',b.toISOString())}
+ const n=$('#rn').value.trim().replace(/[%,()]/g,' '),p=$('#rp').value,d=hRange('rh');if(n)q=q.ilike('santri.nama','%'+n+'%');if(p)q=q.eq('phone_id',p);
+ if(d)q=q.gte('started_at',new Date(d[0]).toISOString()).lt('started_at',new Date(d[1]).toISOString());
  const {data,error}=await q;if(error){$('#rt').innerHTML=`<tr><td>Gagal memuat riwayat: ${esc(error.message)}</td></tr>`;return}RR=(data||[]).map(r=>({...r,santri:r.santri||{id_santri:'-',nama:'(tidak diketahui)',kamar:'-'}}));
  const dr=r=>r.ended_at?fmt((new Date(r.ended_at)-new Date(r.started_at))/1000):fmt((now()-new Date(r.started_at))/1000);
- $('#rt').innerHTML='<tr><th>Waktu</th><th>Santri</th><th>HP</th><th>Tujuan</th><th>Durasi</th><th></th></tr>'+(RR.map(r=>`<tr><td>${tgl(r.started_at)}</td><td>${esc(r.santri.nama)}<br><span class="mu">${esc(r.santri.id_santri)} · Kmr ${esc(r.santri.kamar)}</span></td><td>${esc(r.phones&&r.phones.nama)}</td><td>${esc(r.tujuan)}</td><td>${r.status==='batal'?'<span class="tag">Batal</span>':r.status==='aktif'?'<span class="tag r">Berlangsung</span>':dr(r)}${r.luar_jatah?' <span class="tag r" title="'+esc(r.alasan)+'">luar jatah</span>':''}</td><td>${r.status==='selesai'?`<button class="sec sm" onclick="koreksi(${r.id})">Koreksi</button>`:''}</td></tr>`).join('')||'<tr><td colspan=6 class="mu">Belum ada riwayat untuk filter ini</td></tr>')}
-function exportR(){csv([['Waktu','ID santri','Santri','Kamar','HP','Tujuan','Durasi','Status','Alasan']].concat(RR.map(r=>[r.started_at,r.santri.id_santri,r.santri.nama,r.santri.kamar,r.phones&&r.phones.nama,r.tujuan,r.ended_at?fmt((new Date(r.ended_at)-new Date(r.started_at))/1000):'',r.status,r.alasan])),'riwayat-telepon.csv')}
+ $('#rt').innerHTML='<tr><th>Waktu</th><th>Santri</th><th>HP</th><th>Tujuan</th><th>Durasi</th><th></th></tr>'+(RR.map(r=>`<tr><td>${tgl(r.started_at)}</td><td>${esc(r.santri.nama)}<br><span class="mu">${esc(r.santri.id_santri)} · Kmr ${esc(r.santri.kamar)}</span></td><td>${esc(r.phones&&r.phones.nama)}</td><td>${esc(r.tujuan)}${r.nomor?`<br><span class="mu">${esc(r.nomor)}</span>`:''}</td><td>${r.status==='batal'?'<span class="tag">Batal</span>':r.status==='aktif'?'<span class="tag r">Berlangsung</span>':dr(r)}${r.luar_jatah?' <span class="tag r" title="'+esc(r.alasan)+'">luar jatah</span>':''}</td><td>${r.status==='selesai'?`<button class="sec sm" onclick="koreksi(${r.id})">Koreksi</button>`:''}</td></tr>`).join('')||'<tr><td colspan=6 class="mu">Belum ada riwayat untuk filter ini</td></tr>')}
+function exportR(){csv([['Waktu','ID santri','Santri','Kamar','HP','Tujuan','Nomor','Durasi','Status','Alasan']].concat(RR.map(r=>[tgl(r.started_at),r.santri.id_santri,r.santri.nama,r.santri.kamar,r.phones&&r.phones.nama,r.tujuan,r.nomor,r.ended_at?fmt((new Date(r.ended_at)-new Date(r.started_at))/1000):'',r.status,r.alasan])),'riwayat-telepon.csv')}
 async function koreksi(id){const r=RR.find(x=>x.id===id);const m=prompt('Durasi yang benar (menit, boleh desimal):');if(!m||isNaN(m))return;const a=prompt('Alasan koreksi (wajib):');if(!a||!a.trim())return;
  const {error}=await sb.from('calls').update({ended_at:new Date(new Date(r.started_at).getTime()+m*60000).toISOString()}).eq('id',id);if(error)return toast(error.message);await audit('KOREKSI',`${r.santri.nama}: durasi → ${m} menit. Alasan: ${a}`);loadR()}
 
 /* ---------- REKAP ---------- */
 function rekap(){const m=new Date(now());const v=m.getFullYear()+'-'+String(m.getMonth()+1).padStart(2,'0');
- $('#main').innerHTML=hd('Rekap bulanan',S.role==='pusat'?'Semua daerah':'Daerah '+S.daerah,`<span class="row" style="flex:0 0 auto"><input type="month" id="rm" value="${v}" style="width:170px"><button class="sec" onclick="exportK()">CSV</button></span>`)+'<div id="rk"><p class="mu">Memuat…</p></div>';$('#rm').onchange=loadK;loadK()}
+ $('#main').innerHTML=hd('Rekap bulanan',S.role==='pusat'?'Semua daerah':'Daerah '+S.daerah,`<span class="row" style="flex:0 0 auto">${hPick('rm',false,true)}<button class="sec" onclick="exportK()">CSV</button></span>`)+'<div id="rk"><p class="mu">Memuat…</p></div>';['#rmm','#rmy'].forEach(k=>$(k).onchange=loadK);loadK()}
 let KK=[];
-async function loadK(){const a=monthStart($('#rm').value),b=new Date(a);b.setMonth(b.getMonth()+1);
+async function loadK(){const [a0,b0]=hRange('rm'),a=new Date(a0),b=new Date(b0);
  const [k,c]=await Promise.all([sb.rpc('rekap_kamar',{p_from:a.toISOString(),p_to:b.toISOString(),p_quota:S.cfg.quota}),sb.from('calls').select('started_at,ended_at').eq('status','selesai').gte('started_at',a.toISOString()).lt('started_at',b.toISOString()).limit(10000)]);
  if(k.error){$('#rk').innerHTML=`<div class="card"><b>Rekap belum aktif</b><p class="mu">Jalankan file kada-daerah.sql di Supabase.<br>(${esc(k.error.message)})</p></div>`;return}
  const R=k.data||[],sum=R.reduce((t,x)=>({n:t.n+ +x.jumlah,f:t.f+ +x.penuh,o:t.o+ +x.sebagian,z:t.z+ +x.belum}),{n:0,f:0,o:0,z:0});
@@ -277,10 +307,10 @@ const exportK=()=>csv(KK,'rekap-telepon.csv');
 
 /* ---------- PENGATURAN ---------- */
 async function setTab(){const {data:au}=await sb.from('audit').select('*').order('at',{ascending:false}).limit(30);const c=S.cfg,ro=S.role!=='pusat'?'disabled':'';
- $('#main').innerHTML=hd('Pengaturan',ro?'Aturan ini diatur oleh admin pusat':'Aturan telepon untuk semua daerah')+`<div class="card"><div class="fg"><label class="mu">Jatah per bulan (kali)<input id="cq" type="number" min="1" value="${c.quota}" ${ro}></label><label class="mu">Batas durasi (menit)<input id="cl" type="number" min="1" value="${c.limit_min}" ${ro}></label><label class="mu">Peringatan pada menit ke<input id="cw" type="number" min="1" value="${c.warn_min}" ${ro}></label></div>
+ $('#main').innerHTML=hd('Pengaturan',ro?'Aturan ini diatur oleh admin pusat':'Aturan telepon untuk semua daerah')+`<div class="card"><div class="fg"><label class="mu">Jatah per bulan Hijriyah (kali)<input id="cq" type="number" min="1" value="${c.quota}" ${ro}></label><label class="mu">Batas durasi (menit)<input id="cl" type="number" min="1" value="${c.limit_min}" ${ro}></label><label class="mu">Peringatan pada menit ke<input id="cw" type="number" min="1" value="${c.warn_min}" ${ro}></label><label class="mu">Koreksi tanggal Hijriyah<select id="ch" ${ro}>${[-1,0,1].map(v=>`<option value="${v}" ${(c.hijri_offset||0)===v?'selected':''}>${v>0?'+'+v:v} hari</option>`).join('')}</select></label></div>
  <div class="row" style="margin-top:16px">${ro?'':'<button onclick="saveCfg()">Simpan pengaturan</button>'}<button class="sec" onclick="logout()">${ic('out')}Keluar</button></div></div>
- <h3 class="sec-t">Log audit</h3><div class="sc"><table>${(au||[]).map(a=>`<tr><td>${tgl(a.at)}</td><td>${esc(un(a.admin_email))}</td><td><span class="tag">${esc(a.aksi)}</span></td><td>${esc(a.detail)}</td></tr>`).join('')||'<tr><td class="mu">Belum ada aktivitas</td></tr>'}</table></div>`}
-async function saveCfg(){const v={quota:+$('#cq').value,limit_min:+$('#cl').value,warn_min:+$('#cw').value};if(v.warn_min>=v.limit_min)return toast('Peringatan harus lebih kecil dari batas');
+ <h3 class="sec-t">Log audit</h3><div class="sc"><table><tr><th>Waktu</th><th>Oleh</th><th>Aksi</th><th>Detail</th></tr>${(au||[]).map(a=>`<tr><td>${tgl(a.at)}</td><td>${esc(un(a.admin_email))}</td><td><span class="tag">${esc(a.aksi)}</span></td><td>${esc(a.detail)}</td></tr>`).join('')||'<tr><td class="mu">Belum ada aktivitas</td></tr>'}</table></div>`}
+async function saveCfg(){const v={quota:+$('#cq').value,limit_min:+$('#cl').value,warn_min:+$('#cw').value,hijri_offset:+$('#ch').value};if(v.warn_min>=v.limit_min)return toast('Peringatan harus lebih kecil dari batas');
  const {error}=await sb.from('settings').update(v).eq('id',1);if(error)return toast(error.message);Object.assign(S.cfg,v);await audit('UBAH PENGATURAN',JSON.stringify(v));toast('Pengaturan tersimpan')}
 
 /* ---------- AKUN LOGIN ---------- */
