@@ -59,6 +59,11 @@ table{font-size:12px;border-radius:10px;table-layout:auto}th,td{padding:6px 5px;
 @keyframes tin{from{opacity:0;transform:translateY(-12px) scale(.97)}}@keyframes tbar{from{width:100%}to{width:0}}
 .dg{text-align:left}.dgi{width:42px;height:42px;border-radius:50%;background:#dff5ea;color:var(--em);display:grid;place-items:center;font-weight:700;font-size:20px;margin-bottom:10px}.dgi.d{background:#fde8e8;color:var(--rd)}.dg h2{font-size:18px}.dge{color:var(--rd);font-size:12.5px;min-height:16px;margin:6px 0 0}
 @media(max-width:860px){#tc{right:12px;left:12px;width:auto}}
+.nr{display:flex;gap:8px;align-items:center;margin-top:6px;padding:6px 8px 6px 12px;border:1px solid var(--ln);border-radius:10px;background:#fff}.nr.sel{border-color:#25d366;background:#effbf3}.nr .nv{flex:1;font-weight:600;font-size:14px;letter-spacing:.2px;word-break:break-word}.nr input{border:0;padding:6px 0;box-shadow:none!important;flex:1;background:transparent;min-width:0}
+button.wa{background:#25d366;color:#04361a;padding:7px 14px;font-size:13px;flex:none}button.wa:hover{background:#1fbd5b}
+.tm{justify-content:flex-start;overflow-y:auto}.tm::before,.tm::after{content:'';flex:1 0 8px}
+.wc{margin-top:16px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:16px;padding:14px 18px;width:min(420px,100%)}.wc .wt{font-size:12px;opacity:.75;text-transform:uppercase;letter-spacing:.06em}.wc .wn{font-weight:600;margin-top:4px}.wc .wnum{font-size:24px;font-weight:700;letter-spacing:.3px;margin:2px 0 4px}
+.wab{display:flex;align-items:center;justify-content:center;gap:8px;background:#25d366;color:#04361a;font-weight:700;font-size:18px;border-radius:12px;padding:14px;margin-top:8px;text-decoration:none}.wc .wh{font-size:12px;opacity:.7;margin-top:8px}
 </style>
 </head>
 <body>
@@ -109,7 +114,7 @@ function dlg(o){return new Promise(res=>{const F=o.fields||[],el=document.create
  el.onclick=e=>{if(e.target===el)close(null)};el.onkeydown=e=>{if(e.key==='Enter')submit();if(e.key==='Escape')close(null)};
  (ins[0]||el.querySelector('[data-a="1"]')).focus()})}
 const ask=(title,msg,o)=>dlg({title,msg,...(o||{})});
-let ac;function beep(n=3){try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();for(let i=0;i<n;i++){const o=ac.createOscillator(),g=ac.createGain();o.frequency.value=880;o.connect(g);g.connect(ac.destination);const t=ac.currentTime+i*.45;g.gain.setValueAtTime(.4,t);g.gain.setValueAtTime(0,t+.3);o.start(t);o.stop(t+.32)}}catch(e){}}
+let ac;function beep(n=3){try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();if(ac.state==='suspended')ac.resume();for(let i=0;i<n;i++){const o=ac.createOscillator(),g=ac.createGain();o.frequency.value=880;o.connect(g);g.connect(ac.destination);const t=ac.currentTime+i*.45;g.gain.setValueAtTime(.4,t);g.gain.setValueAtTime(0,t+.3);o.start(t);o.stop(t+.32)}}catch(e){}}
 async function audit(aksi,detail){await sb.from('audit').insert({admin_email:S.user.email,aksi,detail})}
 function csv(rows,name){const c=rows.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+c],{type:'text/csv'}));a.download=name;a.click()}
 
@@ -135,7 +140,8 @@ async function boot(){
  setInterval(refreshActive,15000);setInterval(tick,1000);
  S.on=new Set();
  if(S.role==='terminal'){const p=myPhone();if(p){const ping=()=>sb.from('phones').update({last_seen:new Date(now()).toISOString()}).eq('id',p.id);ping();setInterval(ping,20000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')ping()});
-  S.pch=sb.channel('hp-presence',{config:{presence:{key:String(p.id)}}});S.pch.subscribe(st=>{if(st==='SUBSCRIBED')S.pch.track({at:Date.now()})})}}
+  S.pch=sb.channel('hp-presence',{config:{presence:{key:String(p.id)}}});S.pch.subscribe(st=>{if(st==='SUBSCRIBED')S.pch.track({at:Date.now()})});
+  S.dch=sb.channel('hp-dial-'+p.id).on('postgres_changes',{event:'UPDATE',schema:'public',table:'phones',filter:'id=eq.'+p.id},pl=>{Object.assign(p,pl.new);const g=sig();if(g!==S.sig){S.sig=g;render()}}).subscribe()}}
  else{const ch=sb.channel('hp-presence');ch.on('presence',{event:'sync'},()=>{S.on=new Set(Object.keys(ch.presenceState()));const g=sig();if(g!==S.sig){S.sig=g;if(S.tab==='dash')render()}}).subscribe()}
  render()}
 const myPhone=()=>S.phones.find(p=>p.email===S.user.email);
@@ -143,11 +149,12 @@ async function loadBase(){
  const [c,p,a]=await Promise.all([sb.from('settings').select('*').eq('id',1).single(),sb.from('phones').select('*').eq('aktif',true).order('id'),sb.from('calls').select('*,santri(nama,kamar),phones(nama)').eq('status','aktif')]);
  if(c.data)S.cfg=c.data;S.phones=p.data||[];S.active=a.data||[];S.sig=sig()}
 const isOn=p=>(S.on&&S.on.has(String(p.id)))||!!(p.last_seen&&now()-new Date(p.last_seen)<75000);
-const sig=()=>S.active.map(c=>c.id+c.status).join()+'|'+S.phones.map(p=>isOn(p)?1:0).join();
+const sig=()=>S.active.map(c=>c.id+c.status).join()+'|'+S.phones.map(p=>isOn(p)?1:0).join()+'|'+(S.role==='terminal'&&myPhone()?myPhone().dial_nomor||'':'');
 /* Layar hanya digambar ulang jika status HP benar-benar berubah, dan hanya di Dashboard/HP terminal. Tab lain & isian form tidak tersentuh. */
 async function refreshActive(quiet){
  const {data}=await sb.from('calls').select('*,santri(nama,kamar),phones(nama)').eq('status','aktif');if(data)S.active=data;
  if(S.role!=='terminal'){const {data:p}=await sb.from('phones').select('*').eq('aktif',true).order('id');if(p)S.phones=p}
+ if(S.role==='terminal'){const mp=myPhone();if(mp){const {data:r}=await sb.from('phones').select('*').eq('id',mp.id).maybeSingle();if(r)Object.assign(mp,r)}}
  const g=sig();if(quiet){S.sig=g;return}
  if(g!==S.sig){S.sig=g;if(S.role==='terminal'||S.tab==='dash')render()}}
 
@@ -187,10 +194,10 @@ function tick(){
   if(S.role!=='terminal'){const k1='w'+c.id,k2='l'+c.id;
    if(e>=S.cfg.warn_min*60&&e<c.limit_sec&&!S.alerted[k1]){S.alerted[k1]=1;toast(`🟠 ${c.phones.nama}: ${c.santri.nama} hampir batas`);beep(1)}
    if(e>=c.limit_sec&&!S.alerted[k2]){S.alerted[k2]=1;toast(`🔔 ${c.phones.nama}: ${c.santri.nama} mencapai batas ${fmt(c.limit_sec)}`);beep(3)}}
-  else if(myPhone()&&c.phone_id===myPhone().id){
+  else if(myPhone()&&c.phone_id===myPhone().id){wd(c,e);
    const tm=$('#tm');if(tm){tm.classList.toggle('warn',e>=S.cfg.warn_min*60&&e<c.limit_sec);tm.classList.toggle('over',e>=c.limit_sec);
     const al=$('#al');if(al)al.textContent=e>=c.limit_sec?'⚠️ WAKTU '+fmt(c.limit_sec)+' TELAH TERCAPAI':e>=S.cfg.warn_min*60?'Waktu hampir habis':'';
-    if(e>=c.limit_sec){const q=e-c.limit_sec,cy=c.id+'-'+Math.floor(q/8);if(q%8>=2.2&&S.vc!==cy){S.vc=cy;sayDone()}if(Math.floor(e)%3===0&&navigator.vibrate)navigator.vibrate([400,150,400])}}}}}
+    if(e>=c.limit_sec){const q=e-c.limit_sec,cy=c.id+'-'+Math.floor(q/8);if(q%8>=2.2&&S.vc!==cy&&!window.KadaNative){S.vc=cy;sayDone()}vibOn(c)}}}}}
 /* ---------- ALARM HP TERMINAL ---------- */
 const wavURL=(a,R)=>{const h=new DataView(new ArrayBuffer(44)),w=(o,t)=>[...t].forEach((c,i)=>h.setUint8(o+i,c.charCodeAt(0)));
  w(0,'RIFF');h.setUint32(4,36+a.length,true);w(8,'WAVEfmt ');h.setUint32(16,16,true);h.setUint16(20,1,true);h.setUint16(22,1,true);h.setUint32(24,R,true);h.setUint32(28,R,true);h.setUint16(32,1,true);h.setUint16(34,8,true);w(36,'data');h.setUint32(40,a.length,true);
@@ -200,16 +207,29 @@ const MSG='Waktu telepon sudah habis, terima kasih.';let VO=null;
 const pickVoice=()=>{try{const v=speechSynthesis.getVoices();VO=v.find(x=>/^id/i.test(x.lang))||v.find(x=>/indones/i.test(x.name))||null}catch(e){}};
 try{speechSynthesis.onvoiceschanged=pickVoice;pickVoice()}catch(e){}
 function sayDone(){try{if(!window.speechSynthesis||speechSynthesis.speaking)return;const u=new SpeechSynthesisUtterance(MSG);u.lang='id-ID';if(VO)u.voice=VO;u.rate=.92;u.volume=1;speechSynthesis.speak(u)}catch(e){}}
-function mkAlarm(limit,warn){const R=4000,tot=Math.ceil(limit)+300,a=new Uint8Array(R*tot).fill(128);for(let i=0;i<a.length;i+=2)a[i]=129;
+function mkAlarm(limit,warn){const R=8000,tot=Math.ceil(limit)+300,a=new Uint8Array(R*tot).fill(128);for(let i=0;i<a.length;i+=2)a[i]=129;
  const beep=(t0,d)=>{for(let i=0;i<R*d;i++){const n=Math.floor(t0*R)+i;if(n<a.length)a[n]=128+(Math.sin(2*Math.PI*1000*i/R)>=0?115:-115)}};
  if(warn<limit)beep(warn,.4);for(let c=limit;c<tot-1;c+=8)for(let k=0;k<3;k++)beep(c+k*.6,.35);return wavURL(a,R)}
-function arm(){S.au=S.au||new Audio();S.au.src=wavURL(new Uint8Array(400).fill(128),4000);S.au.play().catch(()=>{});try{const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}catch(e){}}
+function arm(){S.au=S.au||new Audio();S.au.preload='auto';S.au.src=wavURL(new Uint8Array(4000).fill(128),8000);const pr=S.au.play();if(pr&&pr.catch)pr.catch(()=>{});
+ try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();ac.resume()}catch(e){}
+ try{const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}catch(e){}}
 async function wake(){try{S.wl=await navigator.wakeLock.request('screen')}catch(e){}}
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&S.armed)wake()});
-function syncAudio(c){if(!S.au)return;
- if(!c){if(S.ac!==null){S.au.pause();S.ac=null}return}
+function playAu(){if(!S.au)return;const pr=S.au.play();if(pr&&pr.then)pr.then(()=>{if(S.blocked){S.blocked=false;const b=$('#bk');if(b)b.remove()}}).catch(()=>{S.blocked=true;showBlock()})}
+function showBlock(){if($('#bk'))return;const b=document.createElement('button');b.id='bk';b.textContent='🔊 Ketuk untuk mengaktifkan suara alarm';b.style.cssText='position:fixed;left:50%;bottom:90px;transform:translateX(-50%);z-index:60;background:#f0a020;color:#1b1200;padding:14px 20px;border-radius:14px;font-size:15px;box-shadow:0 8px 24px #0006';
+ b.onclick=()=>{try{ac&&ac.resume()}catch(e){}playAu();try{const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}catch(e){}};document.body.appendChild(b)}
+/* Pengawas: jika audio terhenti (mis. direbut aplikasi lain) lanjutkan & sinkronkan lagi; jika diblokir, bunyikan lewat WebAudio */
+function wd(c,e){if(window.KadaNative||!S.au||S.ac!==c.id)return;const want=Math.min(e,c.limit_sec+290);
+ if(S.au.paused&&!S.blocked&&S.au.readyState>0)playAu();
+ if(S.au.readyState>0&&Math.abs(S.au.currentTime-want)>3){try{S.au.currentTime=want}catch(x){}}
+ const q=e-c.limit_sec,cy=c.id+'b'+Math.floor(q/8);if(q>=0&&(S.blocked||S.au.paused)&&q%8<1&&S.bc!==cy){S.bc=cy;beep(3)}
+ const st=$('#as');if(st)st.textContent=S.blocked?'⚠️ Suara belum aktif — ketuk tombol kuning':S.au.paused?'⚠️ Alarm terhenti, mencoba lagi…':'🔔 Alarm siap · bunyi pada '+fmt(c.limit_sec)}
+function syncAudio(c){
+ if(window.KadaNative){try{if(c)KadaNative.schedule(String(new Date(c.started_at).getTime()+c.limit_sec*1000-S.off),MSG);else KadaNative.cancel()}catch(e){}return}
+ if(!S.au)return;
+ if(!c){S.vibId=null;try{navigator.vibrate&&navigator.vibrate(0)}catch(x){}if(S.ac!==null){S.au.pause();S.ac=null}return}
  if(S.ac===c.id)return;S.ac=c.id;const e=(now()-new Date(c.started_at))/1000;
- S.au.src=mkAlarm(c.limit_sec,S.cfg.warn_min*60);S.au.onloadedmetadata=()=>{try{S.au.currentTime=Math.min(e,c.limit_sec+290)}catch(x){}};S.au.play().catch(()=>{});
+ S.au.src=mkAlarm(c.limit_sec,S.cfg.warn_min*60);S.au.onloadedmetadata=()=>{try{S.au.currentTime=Math.min(e,c.limit_sec+290)}catch(x){}};playAu();
  if(navigator.mediaSession&&window.MediaMetadata)navigator.mediaSession.metadata=new MediaMetadata({title:'Telepon aktif: '+c.santri.nama,artist:'KADA Telepon Santri'})}
 const LOCK=`<button class="xl" title="Khusus petugas" onclick="exitModal()"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button>`;
 async function goOffline(){try{const p=myPhone();if(p)await sb.from('phones').update({last_seen:null}).eq('id',p.id);if(S.pch)await sb.removeChannel(S.pch)}catch(e){}}
@@ -220,32 +240,37 @@ function exitModal(){const el=document.createElement('div');el.className='md';do
 function terminalView(){const p=myPhone();
  if(!p){$('#app').innerHTML=`<div class="tm"><h2>HP belum terdaftar</h2><p>Akun ${esc(S.user.email)} belum dipasangkan dengan HP. Hubungi admin.</p>${LOCK}</div>`;return}
  if(!S.armed){$('#app').innerHTML=`<div class="tm"><h1>${esc(p.nama)}</h1><p>Ketuk sekali agar alarm dan layar siaga aktif.</p><button class="sec" style="font-size:20px;padding:16px 28px" onclick="S.armed=true;arm();wake();render()">🔔 Aktifkan alarm</button>${LOCK}</div>`;return}
- const c=S.active.find(x=>x.phone_id===p.id);syncAudio(c);
- $('#app').innerHTML=c?`<div class="tm" id="tm"><span class="pill">● Telepon aktif</span><h1>${esc(c.santri.nama)}</h1><h3>Dengan ${esc(c.tujuan)}</h3><div class="big t" data-s="${c.started_at}" data-l="${c.limit_sec}">00:00</div><div class="bar"><i></i></div><h3>Batas ${fmt(c.limit_sec)}</h3><h2 id="al"></h2>${LOCK}</div>`
- :`<div class="tm"><h1>${esc(p.nama)}</h1><h3>🟢 Siaga — menunggu Admin</h3><p style="opacity:.7">Layar ini otomatis berubah saat telepon dimulai.</p>${LOCK}</div>`;tick()}
+ const c=S.active.find(x=>x.phone_id===p.id);syncAudio(c);const dial=p.dial_nomor&&p.dial_at&&(now()-new Date(p.dial_at))<9e5?waCard(p.dial_nomor,p.dial_nama,'Nomor yang akan ditelepon'):'';
+ $('#app').innerHTML=c?`<div class="tm" id="tm"><span class="pill">● Telepon aktif</span><h1>${esc(c.santri.nama)}</h1><h3>Dengan ${esc(c.tujuan)}</h3><div class="big t" data-s="${c.started_at}" data-l="${c.limit_sec}">00:00</div><div class="bar"><i></i></div><h3>Batas ${fmt(c.limit_sec)}</h3>${waCard(c.nomor,c.santri.nama,'Nomor yang ditelepon')}<h2 id="al"></h2><p id="as" style="opacity:.6;font-size:12px;margin-top:10px"></p>${LOCK}</div>`
+ :`<div class="tm"><h1>${esc(p.nama)}</h1><h3>🟢 Siaga — menunggu Admin</h3><p style="opacity:.7">Layar ini otomatis berubah saat telepon dimulai.</p>${dial}${LOCK}</div>`;tick()}
 
 /* ---------- MULAI TELEPON ---------- */
 async function usedFor(ids){if(!ids.length)return {};const {data}=await sb.from('calls').select('santri_id').in('santri_id',ids).neq('status','batal').eq('luar_jatah',false).gte('started_at',monthStart().toISOString());const m={};(data||[]).forEach(r=>m[r.santri_id]=(m[r.santri_id]||0)+1);return m}
 async function startModal(){
  const free=S.phones.filter(p=>!S.active.some(c=>c.phone_id===p.id));
  if(!free.length)return toast('Semua HP sedang dipakai');
- let P=null,T='Wali',busy=false,rows=[],U={},seq=0,tm,sel=null,ot='',al='';
+ let P=null,T='Wali',busy=false,rows=[],U={},seq=0,tm,sel=null,ot='',al='',sent='',sentP=null;
  const el=document.createElement('div');el.className='md';document.body.appendChild(el);
  el.innerHTML=`<div><h2>Mulai telepon</h2><p class="mu">Cari dengan ID atau nama santri. Durasi ${S.cfg.limit_min} menit.</p>
  <input id="q" placeholder="ID atau nama santri…" autocomplete="off"><div id="res" class="rs"></div><div id="sel"></div>
- <div class="row" style="margin-top:14px"><button class="sec" onclick="this.closest('.md').remove()">Tutup</button><button id="go" style="flex:1" disabled>▶ Mulai telepon</button></div></div>`;
- const q=el.querySelector('#q'),res=el.querySelector('#res'),box=el.querySelector('#sel'),go=el.querySelector('#go');q.focus();
+ <div class="row" style="margin-top:14px"><button class="sec" id="cl">Tutup</button><button id="go" style="flex:1" disabled>▶ Mulai telepon</button></div></div>`;
+ const q=el.querySelector('#q'),res=el.querySelector('#res'),box=el.querySelector('#sel'),go=el.querySelector('#go'),closeM=()=>{if(sentP)clearDial(sentP);el.remove()};el.querySelector('#cl').onclick=closeM;q.focus();
+ const sendDial=async n=>{if(!P)return toast('Pilih HP dulu');if(waDigits(n).length<8)return toast('Nomor belum valid');
+  const {error}=await sb.from('phones').update({dial_nomor:n,dial_nama:sel.nama,dial_at:new Date(now()).toISOString()}).eq('id',P);
+  if(error)return toast('Gagal mengirim ke HP: '+error.message);sent=n;sentP=P;drawSel();toast('Nomor terkirim ke '+S.phones.find(p=>p.id===P).nama+'. Santri tinggal ketuk WhatsApp di HP.','s')};
  const drawSel=()=>{if(!sel){box.innerHTML='';go.disabled=true;res.style.display='';return}
   const n=U[sel.id]||0,hab=n>=S.cfg.quota,cand=free.filter(p=>p.daerah===sel.daerah);if(!cand.find(p=>p.id===P))P=cand[0]?cand[0].id:null;res.style.display='none';
   box.innerHTML=`<div class="card" style="margin-top:10px"><div class="row" style="flex-wrap:nowrap"><div style="flex:1;min-width:0"><b>${esc(sel.nama)}</b><br><span class="mu">${esc(sel.id_santri)} · Kamar ${esc(sel.kamar)} · telepon ${n}/${S.cfg.quota}</span></div><button class="sec sm" id="chg">Ganti</button></div></div>
   ${hab?`<div class="card wb"><b>Jatah bulan ini sudah habis</b><input id="al" placeholder="Alasan izin khusus (wajib)" value="${esc(al)}"></div>`:''}
   ${cand.length>1?`<p class="mu">HP yang dipakai</p><div class="chips">${cand.map(p=>`<button class="${P===p.id?'on':''}" data-p="${p.id}">${esc(p.nama)}${isOn(p)?'':' (offline)'}</button>`).join('')}</div>`:cand.length?'':`<p class="mu" style="color:var(--rd)">Tidak ada HP kosong untuk daerah ${esc(sel.daerah)}</p>`}
   <p class="mu">Yang ditelepon</p><div class="chips">${['Ayah','Ibu','Wali','Kakak','Lainnya'].map(t=>`<button class="${T===t?'on':''}" data-t="${t}">${t}</button>`).join('')}</div>
-  <div class="card nm"><span class="mu">Nomor wali</span><b>${sel.no_hp?esc(sel.no_hp):'Belum terisi'}</b></div>
-  <label class="mu">Nomor lain yang dihubungi (opsional)<input id="ot" inputmode="tel" placeholder="Isi hanya jika bukan nomor wali di atas" value="${esc(ot)}"></label>`;
-  go.disabled=!P;box.querySelector('#chg').onclick=()=>{sel=null;drawSel();q.focus()};
-  box.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{P=+b.dataset.p;drawSel()});box.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{T=b.dataset.t;drawSel()});
-  box.querySelector('#ot').oninput=e=>ot=e.target.value;const a=box.querySelector('#al');if(a)a.oninput=e=>al=e.target.value};
+  <p class="mu" style="margin-top:12px">Nomor wali — ketuk <b>WA</b> untuk mengirim nomor ke HP</p>
+  ${nums(sel.no_hp).map((x,i)=>`<div class="nr${sent===x?' sel':''}"><span class="nv">${esc(x)}</span><button class="wa" data-n="${i}">${sent===x?'✓ Terkirim':'WA'}</button></div>`).join('')||'<div class="nr"><span class="mu">Nomor wali belum terisi — isi manual di bawah</span></div>'}
+  <p class="mu" style="margin-top:10px">Atau isi nomor lain secara manual</p>
+  <div class="nr${sent&&sent===ot.trim()?' sel':''}"><input id="ot" inputmode="tel" placeholder="Contoh: 0812 3456 7890" value="${esc(ot)}"><button class="wa" id="waM">${sent&&sent===ot.trim()?'✓ Terkirim':'WA'}</button></div>`;
+  go.disabled=!P;box.querySelectorAll('.wa[data-n]').forEach(b=>b.onclick=()=>sendDial(nums(sel.no_hp)[+b.dataset.n]));box.querySelector('#waM').onclick=()=>sendDial(ot.trim());box.querySelector('#chg').onclick=()=>{sel=null;drawSel();q.focus()};
+  box.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{const old=sentP;P=+b.dataset.p;if(sent&&old&&old!==P){clearDial(old);sendDial(sent)}else drawSel()});box.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{T=b.dataset.t;drawSel()});
+  box.querySelector('#ot').oninput=e=>{ot=e.target.value;const m=box.querySelector('#waM');if(m)m.textContent=(sent&&sent===ot.trim())?'✓ Terkirim':'WA'};const a=box.querySelector('#al');if(a)a.oninput=e=>al=e.target.value};
  const draw=()=>{res.innerHTML=rows.map(s=>`<button class="pick" data-id="${s.id}"><b>${esc(s.nama)}</b><br><span class="mu">${esc(s.id_santri)} · Kamar ${esc(s.kamar)} · ${esc(s.tingkat)} ${esc(s.kelas)} · ${U[s.id]||0}/${S.cfg.quota}${(U[s.id]||0)>=S.cfg.quota?' · JATAH HABIS':''}</span></button>`).join('')||(q.value.trim()?'<p class="mu">Santri tidak ditemukan</p>':'');
   res.querySelectorAll('.pick').forEach(b=>b.onclick=()=>{sel=rows.find(s=>s.id==b.dataset.id);ot='';al='';drawSel()})};
  const find=async()=>{const v=q.value.trim().replace(/[%,()]/g,' ').trim(),my=++seq;if(!v){rows=[];draw();return}
@@ -255,10 +280,10 @@ async function startModal(){
  q.oninput=()=>{clearTimeout(tm);tm=setTimeout(find,200)};
  q.onkeydown=e=>{if(e.key==='Enter'){clearTimeout(tm);find().then(()=>{if(rows.length===1||(rows[0]&&rows[0].id_santri===q.value.trim())){sel=rows[0];ot='';al='';drawSel()}})}};
  go.onclick=async()=>{if(busy||!sel||!P)return;const n=U[sel.id]||0,hab=n>=S.cfg.quota;if(hab&&!al.trim())return toast('Isi alasan izin khusus');
-  const ph=S.phones.find(p=>p.id===P),nomor=ot.trim()||sel.no_hp||null;busy=true;
+  const ph=S.phones.find(p=>p.id===P),nomor=sent||ot.trim()||nums(sel.no_hp)[0]||null;busy=true;
   const {error}=await sb.from('calls').insert({santri_id:sel.id,phone_id:P,tujuan:T,nomor,limit_sec:S.cfg.limit_min*60,admin_id:S.user.id,luar_jatah:hab,alasan:hab?al:null});
   if(error){busy=false;return toast(error.code==='23505'?'Santri atau HP ini sedang dipakai':error.message)}
-  await audit('MULAI',`${sel.nama} (${sel.id_santri}) • ${ph.nama} • ${T}${nomor?' • '+nomor:''}${hab?' • luar jatah: '+al:''}`);el.remove();await refreshActive()}}
+  await audit('MULAI',`${sel.nama} (${sel.id_santri}) • ${ph.nama} • ${T}${nomor?' • '+nomor:''}${hab?' • luar jatah: '+al:''}`);clearDial(P);sentP=null;el.remove();await refreshActive()}}
 
 /* ---------- SELESAI / BATAL ---------- */
 async function finish(id){const c=S.active.find(x=>x.id===id);if(!await ask('Selesaikan telepon?',`${c.santri.nama} · berjalan ${fmt((now()-new Date(c.started_at))/1000)}`,{ok:'Ya, selesai'}))return;
@@ -312,13 +337,11 @@ const tpl=()=>csv([KOL,['1001','Ahmad Fauzan','12','7A','Tsanawiyah','Surabaya',
 async function delS(id){if(!await ask('Nonaktifkan santri?','Riwayat telepon santri ini tetap tersimpan.',{ok:'Nonaktifkan',danger:true}))return;const {error}=await sb.from('santri').update({aktif:false}).eq('id',id);if(error)return toast(error.message);await audit('NONAKTIF SANTRI','id '+id);loadSantriPage()}
 
 /* ---------- RIWAYAT ---------- */
-function riwayat(){$('#main').innerHTML=hd('Riwayat telepon','Termasuk yang sedang berlangsung','<button class="sec sm" onclick="exportR()">CSV</button>')+`<div class="flt"><input id="rn" placeholder="Cari nama santri…" style="grid-column:span 3"><button onclick="loadR()">Cari</button><select id="rp"><option value="">Semua HP</option>${S.phones.map(p=>`<option value="${p.id}">${esc(p.nama)}</option>`).join('')}</select>${hPick('rh',true,false)}</div><div class="sc" style="margin-top:12px"><table id="rt" class="dsk"></table></div>`;
+function riwayat(){$('#main').innerHTML=hd('Riwayat telepon','Termasuk yang sedang berlangsung','<button class="sec sm" onclick="exportR()">Excel</button>')+`<div class="flt"><input id="rn" placeholder="Cari nama santri…" style="grid-column:span 3"><button onclick="loadR()">Cari</button><select id="rp"><option value="">Semua HP</option>${S.phones.map(p=>`<option value="${p.id}">${esc(p.nama)}</option>`).join('')}</select>${hPick('rh',true,false)}</div><div class="sc" style="margin-top:12px"><table id="rt" class="dsk"></table></div>`;
  $('#rn').onkeydown=e=>{if(e.key==='Enter')loadR()};['#rp','#rhd','#rhm','#rhy'].forEach(k=>$(k).onchange=loadR);loadR()}
 let RR=[];
 async function loadR(){$('#rt').innerHTML='<tr><td class="mu">Memuat…</td></tr>';
- let q=sb.from('calls').select(`*,santri${$('#rn').value.trim()?'!inner':''}(id_santri,nama,kamar),phones(nama)`).order('started_at',{ascending:false}).limit(200);
- const n=$('#rn').value.trim().replace(/[%,()]/g,' '),p=$('#rp').value,d=hRange('rh');if(n)q=q.ilike('santri.nama','%'+n+'%');if(p)q=q.eq('phone_id',p);
- if(d)q=q.gte('started_at',new Date(d[0]).toISOString()).lt('started_at',new Date(d[1]).toISOString());
+ let q=rq('id_santri,nama,kamar').limit(200);
  const {data,error}=await q;if(error){$('#rt').innerHTML=`<tr><td>Gagal memuat riwayat: ${esc(error.message)}</td></tr>`;return}RR=(data||[]).map(r=>({...r,santri:r.santri||{id_santri:'-',nama:'(tidak diketahui)',kamar:'-'}}));
  const dr=r=>r.ended_at?fmt((new Date(r.ended_at)-new Date(r.started_at))/1000):fmt((now()-new Date(r.started_at))/1000);
  const sj=x=>x.filter(Boolean).join(' · '),ph=r=>r.phones&&r.phones.nama,dv=r=>r.status==='batal'?'<span class="tag">Batal</span>':r.status==='aktif'?'<span class="tag r">Berlangsung</span>':`<b>${dr(r)}</b>`;
@@ -327,23 +350,40 @@ async function delR(id){const r=RR.find(x=>x.id===id);if(!r||r.status==='aktif')
  if(!await ask('Hapus riwayat ini?',`${r.santri.nama} · ${tgl(r.started_at)}\nJatah santri bulan itu akan kembali bertambah.`,{ok:'Hapus',danger:true}))return;
  const {error}=await sb.from('calls').delete().eq('id',id);if(error)return toast('Gagal menghapus: '+error.message);
  await audit('HAPUS RIWAYAT',`${r.santri.nama} (${r.santri.id_santri}) • ${tgl(r.started_at)} • ${r.status}${r.nomor?' • '+r.nomor:''}`);toast('Riwayat dihapus');loadR()}
-function exportR(){csv([['Waktu','ID santri','Santri','Kamar','HP','Tujuan','Nomor','Durasi','Status','Alasan']].concat(RR.map(r=>[tgl(r.started_at),r.santri.id_santri,r.santri.nama,r.santri.kamar,r.phones&&r.phones.nama,r.tujuan,r.nomor,r.ended_at?fmt((new Date(r.ended_at)-new Date(r.started_at))/1000):'',r.status,r.alasan])),'riwayat-telepon.csv')}
+function rq(cols){const n=$('#rn').value.trim().replace(/[%,()]/g,' '),p=$('#rp').value,d=hRange('rh');
+ let q=sb.from('calls').select(`*,santri${n?'!inner':''}(${cols}),phones(nama)`).order('started_at',{ascending:false});
+ if(n)q=q.ilike('santri.nama','%'+n+'%');if(p)q=q.eq('phone_id',p);if(d)q=q.gte('started_at',new Date(d[0]).toISOString()).lt('started_at',new Date(d[1]).toISOString());return q}
+async function exportR(){toast('Menyiapkan file Excel…','i');try{let all=[],f=0;for(;;){const {data,error}=await rq('id_santri,nama,kamar,kelas,tingkat,daerah').range(f,f+999);if(error)throw error;all=all.concat(data||[]);if(!data||data.length<1000)break;f+=1000}
+ if(!all.length)return toast('Tidak ada data untuk diekspor');const d=hRange('rh'),SM={selesai:'Selesai',batal:'Batal',aktif:'Berlangsung'};let tm=0;
+ const rows=all.map((r,i)=>{const a=r.santri||{},m=r.status==='selesai'&&r.ended_at?(new Date(r.ended_at)-new Date(r.started_at))/60000:0;tm+=m;
+  return [i+1,fmtH(r.started_at),jam(r.started_at),r.ended_at&&r.status!=='batal'?jam(r.ended_at):'',m?fmt(m*60):'',m?+m.toFixed(2):'',Math.round(r.limit_sec/60),a.id_santri||'',a.nama||'',a.kamar||'',a.daerah||'',a.tingkat||'',a.kelas||'',r.tujuan||'',r.nomor||'',(r.phones&&r.phones.nama)||'',SM[r.status]||r.status,r.luar_jatah?'Ya':'Tidak',r.alasan||'',new Date(r.started_at)]});
+ await xlsx('riwayat-telepon_'+fmtH(now()).replace(/ /g,'-')+'.xlsx',[{name:'Riwayat Telepon',title:['Riwayat Telepon Santri','Dicetak: '+hariN(now())+', '+fmtH(now())+' · Periode: '+(d?fmtH(d[0])+' s/d '+fmtH(d[1]-1):'Semua tanggal'),`Total panggilan: ${all.length} · Total durasi: ${Math.round(tm)} menit`],
+  head:['No','Tanggal (Hijriyah)','Jam mulai','Jam selesai','Durasi (mm:ss)','Durasi (menit)','Batas (menit)','ID santri','Nama santri','Kamar','Daerah','Tingkat','Kelas','Yang ditelepon','Nomor dihubungi','HP','Status','Luar jatah','Alasan','Waktu asli (Masehi)'],
+  rows,w:[6,22,11,11,14,13,12,13,28,9,9,14,10,15,20,12,12,10,28,19],fmt:{19:'yyyy-mm-dd hh:mm'}}]);toast('File Excel siap diunduh ('+all.length+' baris)','s')}catch(e){toast('Gagal membuat Excel: '+(e.message||e),'e')}}
 async function koreksi(id){const r=RR.find(x=>x.id===id);const v=await ask('Koreksi durasi','Masukkan durasi yang benar beserta alasannya.',{ok:'Simpan',fields:[{label:'Durasi yang benar (menit, boleh desimal)',ph:'contoh: 4.5',req:1},{label:'Alasan koreksi',ph:'wajib diisi',req:1}]});if(!v)return;const m=v[0].replace(',','.'),a=v[1];if(isNaN(m)||+m<0)return toast('Durasi tidak valid');
  const {error}=await sb.from('calls').update({ended_at:new Date(new Date(r.started_at).getTime()+m*60000).toISOString()}).eq('id',id);if(error)return toast(error.message);await audit('KOREKSI',`${r.santri.nama}: durasi → ${m} menit. Alasan: ${a}`);loadR()}
 
 /* ---------- REKAP ---------- */
 function rekap(){const m=new Date(now());const v=m.getFullYear()+'-'+String(m.getMonth()+1).padStart(2,'0');
- $('#main').innerHTML=hd('Rekap bulanan',S.role==='pusat'?'Semua daerah':'Daerah '+S.daerah,`<span class="row" style="flex:0 0 auto">${hPick('rm',false,true)}<button class="sec" onclick="exportK()">CSV</button></span>`)+'<div id="rk"><p class="mu">Memuat…</p></div>';['#rmm','#rmy'].forEach(k=>$(k).onchange=loadK);loadK()}
-let KK=[];
+ $('#main').innerHTML=hd('Rekap bulanan',S.role==='pusat'?'Semua daerah':'Daerah '+S.daerah,`<span class="row" style="flex:0 0 auto">${hPick('rm',false,true)}<button class="sec" onclick="exportK()">Excel</button></span>`)+'<div id="rk"><p class="mu">Memuat…</p></div>';['#rmm','#rmy'].forEach(k=>$(k).onchange=loadK);loadK()}
+let KK=[],RK=[];
 async function loadK(){const [a0,b0]=hRange('rm'),a=new Date(a0),b=new Date(b0);
  const [k,c]=await Promise.all([sb.rpc('rekap_kamar',{p_from:a.toISOString(),p_to:b.toISOString(),p_quota:S.cfg.quota}),sb.from('calls').select('started_at,ended_at').eq('status','selesai').gte('started_at',a.toISOString()).lt('started_at',b.toISOString()).limit(10000)]);
  if(k.error){$('#rk').innerHTML=`<div class="card"><b>Rekap belum aktif</b><p class="mu">Jalankan file kada-daerah.sql di Supabase.<br>(${esc(k.error.message)})</p></div>`;return}
- const R=k.data||[],sum=R.reduce((t,x)=>({n:t.n+ +x.jumlah,f:t.f+ +x.penuh,o:t.o+ +x.sebagian,z:t.z+ +x.belum}),{n:0,f:0,o:0,z:0});
+ const R=RK=k.data||[],sum=R.reduce((t,x)=>({n:t.n+ +x.jumlah,f:t.f+ +x.penuh,o:t.o+ +x.sebagian,z:t.z+ +x.belum}),{n:0,f:0,o:0,z:0});
  let dur=0;(c.data||[]).forEach(r=>dur+=(new Date(r.ended_at)-new Date(r.started_at))/60000);
  KK=[['Kamar','Santri','Jatah penuh','Sebagian','Belum']].concat(R.map(x=>[x.kamar,x.jumlah,x.penuh,x.sebagian,x.belum]));
  $('#rk').innerHTML=`<div class="stats"><div><b>${sum.n.toLocaleString('id-ID')}</b><span>Total santri</span></div><div><b>${sum.f}</b><span>Jatah penuh</span></div><div><b>${sum.o}</b><span>Sebagian</span></div><div><b>${sum.z}</b><span>Belum telepon</span></div></div>
  <p class="mu">Total panggilan ${(c.data||[]).length} • Total durasi ${Math.round(dur)} menit</p><div class="sc"><table>${KK.map((r,i)=>'<tr>'+r.map(x=>i?`<td>${esc(x)}</td>`:`<th>${x}</th>`).join('')+'</tr>').join('')}</table></div>`}
-const exportK=()=>csv(KK,'rekap-telepon.csv');
+async function exportK(){toast('Menyiapkan file Excel…','i');try{const [a0,b0]=hRange('rm'),A=new Date(a0).toISOString(),B=new Date(b0).toISOString(),per=$('#rmm').selectedOptions[0].text+' '+$('#rmy').value+' H',Q=S.cfg.quota;
+ const pg=async mk=>{let all=[],f=0;for(;;){const {data,error}=await mk().range(f,f+999);if(error)throw error;all=all.concat(data||[]);if(!data||data.length<1000)break;f+=1000}return all};
+ const [sn,cl]=await Promise.all([pg(()=>sb.from('santri').select('id,id_santri,nama,kamar,kelas,tingkat,daerah,no_hp').eq('aktif',true).order('kamar').order('nama').order('id')),pg(()=>sb.from('calls').select('santri_id,started_at,ended_at,luar_jatah').eq('status','selesai').gte('started_at',A).lt('started_at',B).order('id'))]);
+ const ag={};cl.forEach(c=>{const x=ag[c.santri_id]=ag[c.santri_id]||{n:0,x:0,m:0};c.luar_jatah?x.x++:x.n++;x.m+=(new Date(c.ended_at)-new Date(c.started_at))/60000});
+ const det=sn.map((s,i)=>{const x=ag[s.id]||{n:0,x:0,m:0};return [i+1,s.id_santri,s.nama,s.kamar,s.daerah||'',s.tingkat||'',s.kelas||'',s.no_hp||'',x.n,x.x,+x.m.toFixed(1),x.n>=Q?'Jatah penuh':x.n>0?'Sebagian':'Belum telepon']});
+ const sum=k=>RK.reduce((t,r)=>t+ +r[k],0),head=['Rekap Telepon Santri','Periode: '+per+' · Jatah: '+Q+' kali/bulan','Dicetak: '+hariN(now())+', '+fmtH(now())];
+ await xlsx('rekap-telepon_'+per.replace(/ /g,'-')+'.xlsx',[{name:'Rekap Kamar',title:head,head:['Kamar','Jumlah santri','Jatah penuh','Sebagian','Belum telepon'],rows:RK.map(r=>[r.kamar,+r.jumlah,+r.penuh,+r.sebagian,+r.belum]),total:['TOTAL',sum('jumlah'),sum('penuh'),sum('sebagian'),sum('belum')],w:[14,15,14,12,15]},
+  {name:'Detail Santri',title:head,head:['No','ID santri','Nama','Kamar','Daerah','Tingkat','Kelas','Nomor HP','Telepon (dalam jatah)','Telepon (luar jatah)','Total menit','Status'],rows:det,w:[6,13,30,10,9,14,10,22,14,14,12,15]}]);
+ toast('File Excel siap diunduh','s')}catch(e){toast('Gagal membuat Excel: '+(e.message||e),'e')}}
 
 /* ---------- PENGATURAN ---------- */
 async function setTab(){const {data:au}=await sb.from('audit').select('*').order('at',{ascending:false}).limit(30);const c=S.cfg,ro=S.role!=='pusat'?'disabled':'';
@@ -379,6 +419,26 @@ function akunForm(id){const u=AK.find(x=>x.id===id)||{},ed=!!id,pu=S.role==='pus
 async function delAk(id){const u=AK.find(x=>x.id===id);if(!await ask('Hapus akun?',`${un(u.email)} tidak akan bisa masuk lagi.`,{ok:'Hapus',danger:true}))return;
  const {error}=await sb.rpc('admin_delete_user',{p_id:id});if(error)return toast(error.message);await audit('HAPUS AKUN',u.email);toast('Akun dihapus');await refreshActive(true);akun()}
 
+/* getar denyut: pelan dulu, makin cepat jika terlambat menekan Selesai */
+function vibOn(c){if(S.vibId===c.id||!navigator.vibrate||window.KadaNative)return;S.vibId=c.id;
+ const step=()=>{if(S.vibId!==c.id||!S.active.some(x=>x.id===c.id)){S.vibId=null;try{navigator.vibrate(0)}catch(e){}return}
+  const q=(now()-new Date(c.started_at))/1000-c.limit_sec,[on,gap]=q<120?[500,500]:q<240?[350,300]:[250,170];try{navigator.vibrate(on)}catch(e){}setTimeout(step,on+gap)};step()}
+/* WhatsApp */
+const waDigits=n=>{let d=String(n||'').replace(/\D/g,'');if(d.startsWith('00'))d=d.slice(2);if(d.startsWith('0'))d='62'+d.slice(1);else if(d.startsWith('8'))d='62'+d;return d};
+const nums=t=>String(t||'').split(/[;,\/\n]+/).map(x=>x.trim()).filter(x=>waDigits(x).length>=8);
+const waCard=(nomor,nama,judul)=>nomor?`<div class="wc"><div class="wt">${esc(judul)}</div><div class="wn">${esc(nama||'')}</div><div class="wnum">${esc(nomor)}</div><a class="wab" href="https://wa.me/${waDigits(nomor)}" target="_blank" rel="noopener">${ic('phone')} Buka WhatsApp</a><div class="wh">Setelah WhatsApp terbuka, ketuk ikon telepon di atas chat.</div></div>`:'';
+const clearDial=id=>sb.from('phones').update({dial_nomor:null,dial_nama:null,dial_at:null}).eq('id',id).then(()=>{},()=>{});
+/* Excel (.xlsx) — pustaka dimuat hanya saat tombol Excel ditekan */
+const loadXL=()=>window.ExcelJS?Promise.resolve():new Promise((ok,no)=>{const sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';sc.onload=ok;sc.onerror=()=>no(new Error('Pustaka Excel gagal dimuat — periksa koneksi internet'));document.head.appendChild(sc)});
+async function xlsx(name,sheets){await loadXL();const wb=new ExcelJS.Workbook();wb.creator='KADA Telepon Santri';wb.created=new Date();
+ for(const sh of sheets){const ws=wb.addWorksheet(sh.name),T=sh.title||[];
+  T.forEach((t,i)=>{const r=ws.addRow([t]);r.font={bold:!i,size:i?10:14,color:{argb:i?'FF555555':'FF0B7A5A'}}});if(T.length)ws.addRow([]);
+  const hr=ws.addRow(sh.head);hr.height=28;hr.eachCell(c=>{c.font={bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF0B7A5A'}};c.alignment={vertical:'middle',horizontal:'center',wrapText:true}});
+  sh.rows.forEach(r=>ws.addRow(r));
+  if(sh.total){const tr=ws.addRow(sh.total);tr.font={bold:true};tr.eachCell(c=>{c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE4EBE6'}}})}
+  sh.w.forEach((w,i)=>{const col=ws.getColumn(i+1);col.width=w;if(sh.fmt&&sh.fmt[i])col.numFmt=sh.fmt[i]});
+  ws.autoFilter={from:{row:hr.number,column:1},to:{row:hr.number,column:sh.head.length}};ws.views=[{state:'frozen',ySplit:hr.number}]}
+ const buf=await wb.xlsx.writeBuffer(),a=document.createElement('a');a.href=URL.createObjectURL(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000)}
 boot();
 </script>
 </body>
