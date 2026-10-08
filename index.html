@@ -71,6 +71,8 @@ button.wa{background:#25d366;color:#04361a;padding:7px 14px;font-size:13px;flex:
 [data-theme=dark] .pill{background:#17382a;color:#6fe0a8}[data-theme=dark] .ph.on .pill{background:#401f20;color:#ff9c9c}[data-theme=dark] .ph.warn .pill{background:#43330f;color:#ffcf6b}[data-theme=dark] .ph.off .pill{background:#25322c;color:#9fb0a7}
 [data-theme=dark] .kic.r{background:#401f20}[data-theme=dark] .kic.g{background:#17382a}[data-theme=dark] .kic.b{background:#16304f}[data-theme=dark] .kic.n{background:#25322c;color:#b6c6bd}
 [data-theme=dark] .av,[data-theme=dark] .dgi{background:#17382a}[data-theme=dark] .dgi.d{background:#401f20}[data-theme=dark] .nr.sel{background:#143325}[data-theme=dark] .nm{background:#1b2723}[data-theme=dark] .wb{background:#2e260f}
+.tl{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;padding-top:10px;border-top:1px dashed var(--ln)}.tl button{flex:1 1 auto;padding:6px 8px;font-size:12px}
+body[data-locked="1"]::after{content:'🔒 Terkunci';position:fixed;top:10px;left:12px;z-index:65;font-size:12px;background:#0007;color:#fff;padding:4px 10px;border-radius:99px;pointer-events:none}
 </style>
 </head>
 <body>
@@ -146,22 +148,23 @@ async function boot(){
  sb.channel('calls').on('postgres_changes',{event:'*',schema:'public',table:'calls'},()=>refreshActive()).subscribe();
  setInterval(refreshActive,15000);setInterval(tick,1000);
  S.on=new Set();
- if(S.role==='terminal'){try{window.KadaNative&&KadaNative.keepAlive(true)}catch(e){}const p=myPhone();if(p){const ping=()=>sb.from('phones').update({last_seen:new Date(now()).toISOString()}).eq('id',p.id);ping();setInterval(ping,20000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')ping()});
+ if(S.role==='terminal'){try{window.KadaNative&&KadaNative.keepAlive(true)}catch(e){}const p=myPhone();if(p){const ping=async()=>{try{const {error,count}=await sb.from('phones').update({last_seen:new Date(now()).toISOString()},{count:'exact'}).eq('id',p.id);S.ping={at:Date.now(),ok:!error&&count>0,msg:error?error.message:(count>0?'':'HP tidak ditemukan — periksa daerah HP di menu Akun')}}catch(e){S.ping={at:Date.now(),ok:false,msg:String(e.message||e)}}};ping();setInterval(ping,20000);window.addEventListener('online',ping);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')ping()});
   S.pch=sb.channel('hp-presence',{config:{presence:{key:String(p.id)}}});S.pch.subscribe(st=>{if(st==='SUBSCRIBED')S.pch.track({at:Date.now()})});
-  S.dch=sb.channel('hp-dial-'+p.id).on('postgres_changes',{event:'UPDATE',schema:'public',table:'phones',filter:'id=eq.'+p.id},pl=>{Object.assign(p,pl.new);const g=sig();if(g!==S.sig){S.sig=g;render()}}).subscribe()}}
- else{const ch=sb.channel('hp-presence');ch.on('presence',{event:'sync'},()=>{S.on=new Set(Object.keys(ch.presenceState()));const g=sig();if(g!==S.sig){S.sig=g;if(S.tab==='dash')render()}}).subscribe()}
+  S.dch=sb.channel('hp-dial-'+p.id).on('postgres_changes',{event:'UPDATE',schema:'public',table:'phones',filter:'id=eq.'+p.id},pl=>{Object.assign(p,pl.new);runCmd(p);const g=sig();if(g!==S.sig){S.sig=g;render()}}).subscribe()}}
+ else{const ch=sb.channel('hp-presence');ch.on('presence',{event:'sync'},()=>{S.on=new Set(Object.keys(ch.presenceState()));const g=sig();if(g!==S.sig){S.sig=g;if(S.tab==='dash')render()}}).subscribe();
+  sb.channel('hp-live').on('postgres_changes',{event:'UPDATE',schema:'public',table:'phones'},pl=>{const x=S.phones.find(q=>q.id===pl.new.id);if(x){Object.assign(x,pl.new);const g=sig();if(g!==S.sig){S.sig=g;if(S.tab==='dash')render()}}}).subscribe()}
  render()}
 const myPhone=()=>S.phones.find(p=>p.email===S.user.email);
 async function loadBase(){
  const [c,p,a]=await Promise.all([sb.from('settings').select('*').eq('id',1).single(),sb.from('phones').select('*').eq('aktif',true).order('id'),sb.from('calls').select('*,santri(nama,kamar),phones(nama)').eq('status','aktif')]);
  if(c.data)S.cfg=c.data;S.phones=p.data||[];S.active=a.data||[];S.sig=sig()}
-const isOn=p=>(S.on&&S.on.has(String(p.id)))||!!(p.last_seen&&now()-new Date(p.last_seen)<75000);
-const sig=()=>S.active.map(c=>c.id+c.status).join()+'|'+S.phones.map(p=>isOn(p)?1:0).join()+'|'+(S.role==='terminal'&&myPhone()?myPhone().dial_nomor||'':'');
+const isOn=p=>(S.on&&S.on.has(String(p.id)))||!!(p.last_seen&&now()-new Date(p.last_seen)<90000);
+const sig=()=>S.active.map(c=>c.id+c.status).join()+'|'+S.phones.map(p=>isOn(p)?1:0).join()+'|'+(S.role==='terminal'&&myPhone()?(myPhone().dial_nomor||'')+(myPhone().locked?'L':''):'');
 /* Layar hanya digambar ulang jika status HP benar-benar berubah, dan hanya di Dashboard/HP terminal. Tab lain & isian form tidak tersentuh. */
 async function refreshActive(quiet){
  const {data}=await sb.from('calls').select('*,santri(nama,kamar),phones(nama)').eq('status','aktif');if(data)S.active=data;
  if(S.role!=='terminal'){const {data:p}=await sb.from('phones').select('*').eq('aktif',true).order('id');if(p)S.phones=p}
- if(S.role==='terminal'){const mp=myPhone();if(mp){const {data:r}=await sb.from('phones').select('*').eq('id',mp.id).maybeSingle();if(r)Object.assign(mp,r)}}
+ if(S.role==='terminal'){const mp=myPhone();if(mp){const {data:r}=await sb.from('phones').select('*').eq('id',mp.id).maybeSingle();if(r){Object.assign(mp,r);runCmd(mp)}}}
  const g=sig();if(quiet){S.sig=g;return}
  if(g!==S.sig){S.sig=g;if(S.role==='terminal'||S.tab==='dash')render()}}
 
@@ -191,7 +194,7 @@ async function dash(){
  `<div class="stats">${kpi('phone',st.filter(x=>x.c).length,'Sedang telepon','r')}${kpi('ok',st.filter(x=>!x.c&&x.k!=='off').length,'HP online','g')}${kpi('riwayat','…','Telepon hari ini','b','k3')}${kpi('santri','…','Total santri','n','k4')}</div>
  <h3 class="sec-t">Status HP</h3><div class="grid">${S.phones.map((p,i)=>{const s=st[i],c=s.c;return `<div class="card ph ${s.k}"><div class="top"><span class="av">${ic('phone')}</span><b>${esc(p.nama)}${S.role==='pusat'&&p.daerah?` <span class="tag">${p.daerah}</span>`:''}</b><span class="pill">${c?(s.k.includes('over')?'Batas lewat':s.k==='warn'?'Hampir batas':'Sedang telepon'):s.k==='off'?'Offline':'Online'}</span></div>
  ${c?`<div class="who">${esc(c.santri.nama)}</div><div class="mu">Kamar ${esc(c.santri.kamar)} · dengan ${esc(c.tujuan)}${c.nomor?' · '+esc(c.nomor):''}</div><div class="t" data-s="${c.started_at}" data-l="${c.limit_sec}">00:00</div><div class="bar"><i></i></div><div class="mu" style="margin:6px 0 12px">Batas ${fmt(c.limit_sec)}</div>
- <div class="row"><button class="bad" onclick="finish(${c.id})">Selesai</button><button class="sec" onclick="cancelCall(${c.id})">Batal</button></div>`:`<div class="mu" style="padding:18px 0 6px">${s.k==='off'?'Belum login':'Siap dipakai'}</div>`}</div>`}).join('')||'<p class="mu">Belum ada HP. Tambahkan lewat menu Akun.</p>'}</div>`;tick();
+ <div class="row"><button class="bad" onclick="finish(${c.id})">Selesai</button><button class="sec" onclick="cancelCall(${c.id})">Batal</button></div>`:`<div class="mu" style="padding:18px 0 6px">${s.k==='off'?'Belum login'+(p.last_seen?' · terakhir terlihat '+jam(p.last_seen):''):'Siap dipakai'}</div>`}${tl(p,s)}</div>`}).join('')||'<p class="mu">Belum ada HP. Tambahkan lewat menu Akun.</p>'}</div>`;tick();
  const [a,b]=await Promise.all([sb.from('calls').select('id',{count:'exact',head:true}).neq('status','batal').gte('started_at',td.toISOString()),sb.from('santri').select('id',{count:'exact',head:true}).eq('aktif',true)]);
  const k3=$('#k3'),k4=$('#k4');if(k3)k3.textContent=a.count||0;if(k4)k4.textContent=(b.count||0).toLocaleString('id-ID')}
 
@@ -240,16 +243,16 @@ function syncAudio(c){
  S.au.src=mkAlarm(c.limit_sec,S.cfg.warn_min*60);S.au.onloadedmetadata=()=>{try{S.au.currentTime=Math.min(e,c.limit_sec+290)}catch(x){}};playAu();
  if(navigator.mediaSession&&window.MediaMetadata)navigator.mediaSession.metadata=new MediaMetadata({title:'Telepon aktif: '+c.santri.nama,artist:'KADA Telepon Santri'})}
 const LOCK=`<button class="xl" title="Khusus petugas" onclick="exitModal()"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button>`;
-async function goOffline(){try{window.KadaNative&&KadaNative.keepAlive(false)}catch(e){}try{const p=myPhone();if(p)await sb.from('phones').update({last_seen:null}).eq('id',p.id);if(S.pch)await sb.removeChannel(S.pch)}catch(e){}}
+async function goOffline(){try{window.KadaNative&&(KadaNative.keepAlive(false),KadaNative.lock(false))}catch(e){}try{const p=myPhone();if(p)await sb.from('phones').update({last_seen:null}).eq('id',p.id);if(S.pch)await sb.removeChannel(S.pch)}catch(e){}}
 function exitModal(){if(document.querySelector('#xp'))return;const el=document.createElement('div');el.className='md';el.style.zIndex=70;document.body.appendChild(el);
  let nat='Berjalan di browser (bukan aplikasi Android)';if(window.KadaNative){try{nat=KadaNative.info()}catch(e){nat=''}}
- el.innerHTML=`<div><h2>Menu petugas</h2><p class="mu" style="margin:2px 0 10px">${esc(nat)}</p>
- <div class="mg"><button class="sec" id="mt">🔔 Tes alarm (10 detik)</button><button class="sec" id="mh">⏹ Hentikan alarm</button><button class="sec" id="mr">${ic('refresh')} Muat ulang data</button><button class="sec" id="ml">${ic('refresh')} Muat ulang halaman</button><button class="sec" id="mk" style="grid-column:span 2">${ic('theme')} Terang / gelap</button></div>
+ el.innerHTML=`<div><h2>Menu petugas</h2><p class="mu" style="margin:2px 0 10px">${esc(nat+' · sinyal ke server: '+(S.ping?(S.ping.ok?'OK '+jam(S.ping.at):'GAGAL — '+S.ping.msg):'belum terkirim'))}</p>
+ <div class="mg"><button class="sec" id="mr">${ic('refresh')} Muat ulang data</button><button class="sec" id="ml">${ic('refresh')} Muat ulang halaman</button><button class="sec" id="mk" style="grid-column:span 2">${ic('theme')} Terang / gelap</button></div>
  <p class="mu" style="margin-top:14px">Keluar dari HP ini — masukkan password akun ${esc(un(S.user.email))}</p><input id="xp" type="password" placeholder="Password akun HP" autocomplete="off"><p id="xe" style="color:var(--rd);min-height:20px;margin:6px 0 0"></p><div class="row"><button class="sec" id="mc">Tutup</button><button id="xo">Keluar</button></div></div>`;
- const g=k=>el.querySelector(k);g('#mt').onclick=testAlarm;g('#mh').onclick=stopAlarm;g('#mr').onclick=()=>{el.remove();refresh()};g('#ml').onclick=()=>location.reload();g('#mk').onclick=toggleTheme;g('#mc').onclick=()=>el.remove();
+ const g=k=>el.querySelector(k);g('#mr').onclick=()=>{el.remove();refresh()};g('#ml').onclick=()=>location.reload();g('#mk').onclick=toggleTheme;g('#mc').onclick=()=>el.remove();
  const go=async()=>{const {error}=await sb.auth.signInWithPassword({email:S.user.email,password:g('#xp').value});if(error){g('#xe').textContent='Password salah';return}await goOffline();logout()};
  g('#xo').onclick=go;g('#xp').onkeydown=e=>{if(e.key==='Enter')go()};g('#xp').focus()}
-function terminalView(){const p=myPhone();
+function terminalView(){const p=myPhone();applyLock(p);
  if(!p){$('#app').innerHTML=`<div class="tm"><h2>HP belum terdaftar</h2><p>Akun ${esc(S.user.email)} belum dipasangkan dengan HP. Hubungi admin.</p>${LOCK}</div>`;return}
  if(!S.armed){$('#app').innerHTML=`<div class="tm"><h1>${esc(p.nama)}</h1><p>Ketuk sekali agar alarm dan layar siaga aktif.</p><button class="sec" style="font-size:20px;padding:16px 28px" onclick="S.armed=true;arm();wake();render()">🔔 Aktifkan alarm</button>${LOCK}</div>`;return}
  const c=S.active.find(x=>x.phone_id===p.id);syncAudio(c);const dial=p.dial_nomor&&p.dial_at&&(now()-new Date(p.dial_at))<9e5?waCard(p.dial_nomor,p.dial_nama,'Nomor yang akan ditelepon'):'';
@@ -462,6 +465,14 @@ function testAlarm(){const t=msgFor({santri:{nama:'MOH. CONTOH'}});
  toast('Tes alarm: bunyi, getar, lalu suara','i');try{beep(3)}catch(e){}try{navigator.vibrate&&navigator.vibrate([500,300,500,300,500])}catch(e){}
  setTimeout(()=>{try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='id-ID';if(VO)u.voice=VO;speechSynthesis.speak(u)}catch(e){}},2300)}
 function stopAlarm(){try{window.KadaNative&&KadaNative.cancel()}catch(e){}try{speechSynthesis.cancel();navigator.vibrate&&navigator.vibrate(0)}catch(e){}toast('Alarm dihentikan','s')}
+/* perintah admin → HP */
+const tl=(p,s)=>{const off=s.k==='off'?'disabled title="HP sedang offline"':'';return `<div class="tl"><button class="sec sm" ${off} onclick="cmdHp(${p.id},'test')">🔔 Tes alarm &amp; getar</button><button class="sec sm" ${off} onclick="cmdHp(${p.id},'stop')">⏹ Hentikan</button><button class="sec sm" onclick="lockHp(${p.id},${p.locked?'false':'true'})">${p.locked?'🔓 Buka kunci':'🔒 Kunci HP'}</button></div>`};
+async function cmdHp(id,cmd){const p=S.phones.find(x=>x.id===id);const {error}=await sb.from('phones').update({cmd,cmd_at:new Date(now()).toISOString()}).eq('id',id);
+ if(error)return toast('Gagal mengirim perintah: '+error.message,'e');toast(cmd==='test'?`Tes dikirim ke ${p.nama}. Alarm, getar, dan suara muncul sekitar 10 detik lagi.`:`Perintah hentikan alarm dikirim ke ${p.nama}.`,'s')}
+async function lockHp(id,on){const p=S.phones.find(x=>x.id===id);const {error}=await sb.from('phones').update({locked:on}).eq('id',id);
+ if(error)return toast('Gagal mengubah kunci: '+error.message,'e');p.locked=on;await audit(on?'KUNCI HP':'BUKA KUNCI HP',p.nama);toast(on?`${p.nama} dikunci. Keluar dari aplikasi di HP itu kini meminta password.`:`${p.nama} dibuka kuncinya.`,'s');dash()}
+function runCmd(p){if(!p||!p.cmd||!p.cmd_at)return;const at=+new Date(p.cmd_at);if(S.cmdAt===at)return;S.cmdAt=at;if(Math.abs(now()-at)>30000)return;if(p.cmd==='test')testAlarm();else if(p.cmd==='stop')stopAlarm()}
+function applyLock(p){const on=!!(p&&p.locked);document.body.dataset.locked=on?1:0;if(S.lk!==on){S.lk=on;try{window.KadaNative&&KadaNative.lock(on)}catch(e){}}}
 boot();
 </script>
 </body>
