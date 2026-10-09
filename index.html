@@ -73,6 +73,7 @@ button.wa{background:#25d366;color:#04361a;padding:7px 14px;font-size:13px;flex:
 [data-theme=dark] .av,[data-theme=dark] .dgi{background:#17382a}[data-theme=dark] .dgi.d{background:#401f20}[data-theme=dark] .nr.sel{background:#143325}[data-theme=dark] .nm{background:#1b2723}[data-theme=dark] .wb{background:#2e260f}
 .tl{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;padding-top:10px;border-top:1px dashed var(--ln)}.tl button{flex:1 1 auto;padding:6px 8px;font-size:12px}
 body[data-locked="1"]::after{content:'🔒 Terkunci';position:fixed;top:10px;left:12px;z-index:65;font-size:12px;background:#0007;color:#fff;padding:4px 10px;border-radius:99px;pointer-events:none}
+#nb{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:85;background:var(--w);border:1px solid var(--ln);border-radius:12px;padding:10px 14px;display:flex;gap:10px;align-items:center;box-shadow:0 12px 32px #0e1d1830;max-width:92vw;font-size:13px;flex-wrap:wrap}
 </style>
 </head>
 <body>
@@ -148,7 +149,7 @@ async function boot(){
  sb.channel('calls').on('postgres_changes',{event:'*',schema:'public',table:'calls'},()=>refreshActive()).subscribe();
  setInterval(refreshActive,15000);setInterval(tick,1000);
  S.on=new Set();
- if(S.role==='terminal'){try{window.KadaNative&&KadaNative.keepAlive(true)}catch(e){}const p=myPhone();if(p){const ping=async()=>{try{const {error,count}=await sb.from('phones').update({last_seen:new Date(now()).toISOString()},{count:'exact'}).eq('id',p.id);S.ping={at:Date.now(),ok:!error&&count>0,msg:error?error.message:(count>0?'':'HP tidak ditemukan — periksa daerah HP di menu Akun')}}catch(e){S.ping={at:Date.now(),ok:false,msg:String(e.message||e)}}};ping();setInterval(ping,20000);window.addEventListener('online',ping);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')ping()});
+ if(S.role==='terminal'){try{window.KadaNative&&(KadaNative.keepAlive(true),KadaNative.setup())}catch(e){}const p=myPhone();if(p){const ping=async()=>{try{const {error,count}=await sb.from('phones').update({last_seen:new Date(now()).toISOString()},{count:'exact'}).eq('id',p.id);S.ping={at:Date.now(),ok:!error&&count>0,msg:error?error.message:(count>0?'':'HP tidak ditemukan — periksa daerah HP di menu Akun')}}catch(e){S.ping={at:Date.now(),ok:false,msg:String(e.message||e)}}};ping();setInterval(ping,20000);window.addEventListener('online',ping);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')ping()});
   S.pch=sb.channel('hp-presence',{config:{presence:{key:String(p.id)}}});S.pch.subscribe(st=>{if(st==='SUBSCRIBED')S.pch.track({at:Date.now()})});
   S.dch=sb.channel('hp-dial-'+p.id).on('postgres_changes',{event:'UPDATE',schema:'public',table:'phones',filter:'id=eq.'+p.id},pl=>{Object.assign(p,pl.new);runCmd(p);const g=sig();if(g!==S.sig){S.sig=g;render()}}).subscribe()}}
  else{const ch=sb.channel('hp-presence');ch.on('presence',{event:'sync'},()=>{S.on=new Set(Object.keys(ch.presenceState()));const g=sig();if(g!==S.sig){S.sig=g;if(S.tab==='dash')render()}}).subscribe();
@@ -203,11 +204,12 @@ function tick(){
  document.querySelectorAll('.t[data-s]').forEach(el=>{const e=(now()-new Date(el.dataset.s))/1000;el.textContent=fmt(e);const c=el.closest('.ph'),rt=c||el.closest('.tm'),bi=rt&&rt.querySelector('.bar i');if(bi)bi.style.width=Math.min(100,e/+el.dataset.l*100)+'%';if(c){const l=+el.dataset.l;c.classList.toggle('over',e>=l);c.classList.toggle('warn',e>=S.cfg.warn_min*60&&e<l);const pl=c.querySelector('.pill');if(pl)pl.textContent=e>=l?'Batas lewat':e>=S.cfg.warn_min*60?'Hampir batas':'Sedang telepon'}});
  for(const c of S.active){const e=(now()-new Date(c.started_at))/1000;
   if(S.role!=='terminal'){const k1='w'+c.id,k2='l'+c.id;
-   if(e>=S.cfg.warn_min*60&&e<c.limit_sec&&!S.alerted[k1]){S.alerted[k1]=1;toast(`🟠 ${c.phones.nama}: ${c.santri.nama} hampir batas`);beep(1)}
-   if(e>=c.limit_sec&&!S.alerted[k2]){S.alerted[k2]=1;toast(`🔔 ${c.phones.nama}: ${c.santri.nama} mencapai batas ${fmt(c.limit_sec)}`);beep(3)}}
+   if(e>=S.cfg.warn_min*60&&e<c.limit_sec&&!S.alerted[k1]){S.alerted[k1]=1;toast(`🟠 ${c.phones.nama}: ${c.santri.nama} hampir batas`);beep(1);notif('Hampir batas',`${c.phones.nama} · ${c.santri.nama} hampir mencapai batas waktu`,'w'+c.id)}
+   if(e>=c.limit_sec&&!S.alerted[k2]){S.alerted[k2]=1;toast(`🔔 ${c.phones.nama}: ${c.santri.nama} mencapai batas ${fmt(c.limit_sec)}`);beep(3);notif('Waktu telepon habis',`${c.phones.nama} · ${c.santri.nama} melewati batas ${fmt(c.limit_sec)}. Segera selesaikan panggilan.`,'l'+c.id)}
+   if(e>=c.limit_sec+300&&!S.alerted['x'+c.id]){S.alerted['x'+c.id]=1;toast(`🔔 ${c.phones.nama}: lewat 5 menit, volume HP dimatikan`);notif('Volume HP dimatikan',`${c.phones.nama} · ${c.santri.nama} belum mengakhiri telepon 5 menit setelah batas. Volume dimatikan sampai Anda menekan Selesai.`,'x'+c.id)}}
   else if(myPhone()&&c.phone_id===myPhone().id){wd(c,e);
    const tm=$('#tm');if(tm){tm.classList.toggle('warn',e>=S.cfg.warn_min*60&&e<c.limit_sec);tm.classList.toggle('over',e>=c.limit_sec);
-    const al=$('#al');if(al)al.textContent=e>=c.limit_sec?'⚠️ WAKTU '+fmt(c.limit_sec)+' TELAH TERCAPAI':e>=S.cfg.warn_min*60?'Waktu hampir habis':'';
+    const al=$('#al');if(al)al.textContent=e>=c.limit_sec?'⚠️ WAKTU TELEPON HABIS — AKHIRI PANGGILAN SEKARANG':e>=S.cfg.warn_min*60?'Waktu hampir habis':'';
     if(e>=c.limit_sec){const q=e-c.limit_sec,cy=c.id+'-'+Math.floor(q/8);if(q%8>=2.2&&S.vc!==cy&&!window.KadaNative){S.vc=cy;sayDone(c)}vibOn(c)}}}}}
 /* ---------- ALARM HP TERMINAL ---------- */
 const wavURL=(a,R)=>{const h=new DataView(new ArrayBuffer(44)),w=(o,t)=>[...t].forEach((c,i)=>h.setUint8(o+i,c.charCodeAt(0)));
@@ -236,7 +238,7 @@ function wd(c,e){if(window.KadaNative||!S.au||S.ac!==c.id)return;const want=Math
  const q=e-c.limit_sec,cy=c.id+'b'+Math.floor(q/8);if(q>=0&&(S.blocked||S.au.paused)&&q%8<1&&S.bc!==cy){S.bc=cy;beep(3)}
  const st=$('#as');if(st)st.textContent=S.blocked?'⚠️ Suara belum aktif — ketuk tombol kuning':S.au.paused?'⚠️ Alarm terhenti, mencoba lagi…':'🔔 Alarm siap · bunyi pada '+fmt(c.limit_sec)}
 function syncAudio(c){
- if(window.KadaNative){try{if(c){if(S.nat!==c.id){S.nat=c.id;KadaNative.schedule(String(new Date(c.started_at).getTime()+c.limit_sec*1000-S.off),msgFor(c))}}else if(S.nat){S.nat=null;KadaNative.cancel()}}catch(e){}return}
+ if(window.KadaNative){try{if(c){if(S.nat!==c.id){S.nat=c.id;KadaNative.schedule(String(new Date(c.started_at).getTime()+c.limit_sec*1000-S.off),msgFor(c),detailFor(c))}}else if(S.nat){S.nat=null;KadaNative.cancel()}}catch(e){}return}
  if(!S.au)return;
  if(!c){S.vibId=null;try{navigator.vibrate&&navigator.vibrate(0)}catch(x){}if(S.ac!==null){S.au.pause();S.ac=null}return}
  if(S.ac===c.id)return;S.ac=c.id;const e=(now()-new Date(c.started_at))/1000;
@@ -459,9 +461,9 @@ async function xlsx(name,sheets){await loadXL();const wb=new ExcelJS.Workbook();
 function toggleTheme(){const n=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=n;try{localStorage.setItem('kada-theme',n)}catch(e){}}
 async function refresh(){toast('Memuat ulang data…','i');try{await loadBase()}catch(e){}render()}
 const lisan=n=>String(n||'').replace(/['’`]/g,'').replace(/\b(MOH|MOCH|MUH|MHD|M)\.?(?=\s)/gi,'Muhammad').replace(/\bABD\.?(?=\s)/gi,'Abdul').replace(/\./g,' ').replace(/\s+/g,' ').trim().toLowerCase().split(' ').filter(Boolean).slice(0,3).map(w=>w[0].toUpperCase()+w.slice(1)).join(' ')||'santri';
-const msgFor=c=>`Saudara ${lisan(c&&c.santri&&c.santri.nama)}, waktu telepon Anda sudah habis, silahkan akhiri telepon, terima kasih.`;
-function testAlarm(){const t=msgFor({santri:{nama:'Muhammad.'}});
- if(window.KadaNative){try{KadaNative.schedule(String(Date.now()+10000),t)}catch(e){toast('Gagal: '+e,'e')}return}
+const msgFor=c=>`Saudara ${lisan(c&&c.santri&&c.santri.nama)}, waktu telepon Anda sudah habis, terima kasih.`;
+function testAlarm(){const t=msgFor({santri:{nama:'Muhammad. '}});
+ if(window.KadaNative){try{KadaNative.schedule(String(Date.now()+10000),t,'Nama: Muhammad. (tes)\nHP: tes alarm dari admin\nBatas: 0 menit')}catch(e){toast('Gagal: '+e,'e')}return}
  toast('Tes alarm: bunyi, getar, lalu suara','i');try{beep(3)}catch(e){}try{navigator.vibrate&&navigator.vibrate([500,300,500,300,500])}catch(e){}
  setTimeout(()=>{try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='id-ID';if(VO)u.voice=VO;speechSynthesis.speak(u)}catch(e){}},2300)}
 function stopAlarm(){try{window.KadaNative&&KadaNative.cancel()}catch(e){}try{speechSynthesis.cancel();navigator.vibrate&&navigator.vibrate(0)}catch(e){}toast('Alarm dihentikan','s')}
@@ -473,6 +475,16 @@ async function lockHp(id,on){const p=S.phones.find(x=>x.id===id);const {error}=a
  if(error)return toast('Gagal mengubah kunci: '+error.message,'e');p.locked=on;await audit(on?'KUNCI HP':'BUKA KUNCI HP',p.nama);toast(on?`${p.nama} dikunci. Keluar dari aplikasi di HP itu kini meminta password.`:`${p.nama} dibuka kuncinya.`,'s');dash()}
 function runCmd(p){if(!p||!p.cmd||!p.cmd_at)return;const at=+new Date(p.cmd_at);if(S.cmdAt===at)return;S.cmdAt=at;if(Math.abs(now()-at)>30000)return;if(p.cmd==='test')testAlarm();else if(p.cmd==='stop')stopAlarm()}
 function applyLock(p){const on=!!(p&&p.locked);document.body.dataset.locked=on?1:0;if(S.lk!==on){S.lk=on;try{window.KadaNative&&KadaNative.lock(on)}catch(e){}}}
+const detailFor=c=>[`Nama: ${c.santri.nama}`,`Kamar: ${c.santri.kamar}`,c.nomor?`Nomor: ${c.nomor}`:'',`Dengan: ${c.tujuan}`,`HP: ${(c.phones&&c.phones.nama)||''}`,`Batas: ${Math.round(c.limit_sec/60)} menit`].filter(Boolean).join('\n');
+/* notifikasi admin di atas layar (aplikasi Android: native; browser: Notification API + service worker) */
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').then(r=>{S.sw=r}).catch(()=>{});
+function notif(title,body,tag){try{if(window.KadaNative&&KadaNative.pushNotif){KadaNative.pushNotif(title,body);return}
+ if(!window.Notification||Notification.permission!=='granted')return;const o={body,tag:tag||'kada',renotify:true,requireInteraction:true,vibrate:[200,100,200]};
+ if(S.sw&&S.sw.showNotification)S.sw.showNotification(title,o);else if(navigator.serviceWorker)navigator.serviceWorker.ready.then(x=>x.showNotification(title,o));else new Notification(title,o)}catch(e){}}
+function notifBanner(){if(window.KadaNative||!window.Notification||Notification.permission!=='default'||document.getElementById('nb'))return;const b=document.createElement('div');b.id='nb';
+ b.innerHTML='<span>🔔 Aktifkan notifikasi agar peringatan muncul di atas layar</span><button id="nbo">Aktifkan</button><button class="sec sm" id="nbx">Nanti</button>';document.body.appendChild(b);
+ document.getElementById('nbo').onclick=()=>Notification.requestPermission().then(()=>b.remove());document.getElementById('nbx').onclick=()=>b.remove()}
+setTimeout(()=>{if(S.role&&S.role!=='terminal')notifBanner()},4000);
 boot();
 </script>
 </body>
