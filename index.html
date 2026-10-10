@@ -206,7 +206,7 @@ function tick(){
   if(S.role!=='terminal'){const k1='w'+c.id,k2='l'+c.id;
    if(e>=S.cfg.warn_min*60&&e<c.limit_sec&&!S.alerted[k1]){S.alerted[k1]=1;toast(`🟠 ${c.phones.nama}: ${c.santri.nama} hampir batas`);beep(1);notif('Hampir batas',`${c.phones.nama} · ${c.santri.nama} hampir mencapai batas waktu`,'w'+c.id)}
    if(e>=c.limit_sec&&!S.alerted[k2]){S.alerted[k2]=1;toast(`🔔 ${c.phones.nama}: ${c.santri.nama} mencapai batas ${fmt(c.limit_sec)}`);beep(3);notif('Waktu telepon habis',`${c.phones.nama} · ${c.santri.nama} melewati batas ${fmt(c.limit_sec)}. Segera selesaikan panggilan.`,'l'+c.id)}
-   if(e>=c.limit_sec+300&&!S.alerted['x'+c.id]){S.alerted['x'+c.id]=1;toast(`🔔 ${c.phones.nama}: lewat 5 menit, volume HP dimatikan`);notif('Volume HP dimatikan',`${c.phones.nama} · ${c.santri.nama} belum mengakhiri telepon 5 menit setelah batas. Volume dimatikan sampai Anda menekan Selesai.`,'x'+c.id)}}
+   if(enfSec()>0&&e>=c.limit_sec+enfSec()&&!S.alerted['x'+c.id]){S.alerted['x'+c.id]=1;toast(`🔔 ${c.phones.nama}: lewat ${enfSec()/60} menit, volume HP dimatikan`);notif('Volume HP dimatikan',`${c.phones.nama} · ${c.santri.nama} belum mengakhiri telepon ${enfSec()/60} menit setelah batas. Volume dimatikan sampai Anda menekan Selesai.`,'x'+c.id)}}
   else if(myPhone()&&c.phone_id===myPhone().id){wd(c,e);
    const tm=$('#tm');if(tm){tm.classList.toggle('warn',e>=S.cfg.warn_min*60&&e<c.limit_sec);tm.classList.toggle('over',e>=c.limit_sec);
     const al=$('#al');if(al)al.textContent=e>=c.limit_sec?'⚠️ WAKTU TELEPON HABIS — AKHIRI PANGGILAN SEKARANG':e>=S.cfg.warn_min*60?'Waktu hampir habis':'';
@@ -216,7 +216,7 @@ const wavURL=(a,R)=>{const h=new DataView(new ArrayBuffer(44)),w=(o,t)=>[...t].f
  w(0,'RIFF');h.setUint32(4,36+a.length,true);w(8,'WAVEfmt ');h.setUint32(16,16,true);h.setUint16(20,1,true);h.setUint16(22,1,true);h.setUint32(24,R,true);h.setUint32(28,R,true);h.setUint16(32,1,true);h.setUint16(34,8,true);w(36,'data');h.setUint32(40,a.length,true);
  return URL.createObjectURL(new Blob([h,a],{type:'audio/wav'}))};
 /* Satu file audio: hening sampai batas waktu, lalu bunyi beep berulang. Diputar sejak telepon dimulai sehingga tetap berjalan sebagai pemutar media saat aplikasi lain dibuka. */
-const MSG='Waktu telepon anda sudah habis, silahkan akhiri telfon, terima kasih.';let VO=null;
+const MSG='Waktu telepon sudah habis, terima kasih.';let VO=null;
 const pickVoice=()=>{try{const v=speechSynthesis.getVoices();VO=v.find(x=>/^id/i.test(x.lang))||v.find(x=>/indones/i.test(x.name))||null}catch(e){}};
 try{speechSynthesis.onvoiceschanged=pickVoice;pickVoice()}catch(e){}
 function sayDone(c){try{if(!window.speechSynthesis||speechSynthesis.speaking)return;const u=new SpeechSynthesisUtterance(c?msgFor(c):MSG);u.lang='id-ID';if(VO)u.voice=VO;u.rate=.92;u.volume=1;speechSynthesis.speak(u)}catch(e){}}
@@ -238,7 +238,7 @@ function wd(c,e){if(window.KadaNative||!S.au||S.ac!==c.id)return;const want=Math
  const q=e-c.limit_sec,cy=c.id+'b'+Math.floor(q/8);if(q>=0&&(S.blocked||S.au.paused)&&q%8<1&&S.bc!==cy){S.bc=cy;beep(3)}
  const st=$('#as');if(st)st.textContent=S.blocked?'⚠️ Suara belum aktif — ketuk tombol kuning':S.au.paused?'⚠️ Alarm terhenti, mencoba lagi…':'🔔 Alarm siap · bunyi pada '+fmt(c.limit_sec)}
 function syncAudio(c){
- if(window.KadaNative){try{if(c){if(S.nat!==c.id){S.nat=c.id;KadaNative.schedule(String(new Date(c.started_at).getTime()+c.limit_sec*1000-S.off),msgFor(c),detailFor(c))}}else if(S.nat){S.nat=null;KadaNative.cancel()}}catch(e){}return}
+ if(window.KadaNative){try{if(c){if(S.nat!==c.id){S.nat=c.id;KadaNative.schedule(String(new Date(c.started_at).getTime()+c.limit_sec*1000-S.off),msgFor(c),detailFor(c),String(enfSec()))}}else if(S.nat){S.nat=null;KadaNative.cancel()}}catch(e){}return}
  if(!S.au)return;
  if(!c){S.vibId=null;try{navigator.vibrate&&navigator.vibrate(0)}catch(x){}if(S.ac!==null){S.au.pause();S.ac=null}return}
  if(S.ac===c.id)return;S.ac=c.id;const e=(now()-new Date(c.started_at))/1000;
@@ -404,10 +404,10 @@ async function exportK(){toast('Menyiapkan file Excel…','i');try{const [a0,b0]
 
 /* ---------- PENGATURAN ---------- */
 async function setTab(){const {data:au}=await sb.from('audit').select('*').order('at',{ascending:false}).limit(30);const c=S.cfg,ro=S.role!=='pusat'?'disabled':'';
- $('#main').innerHTML=hd('Pengaturan',ro?'Aturan ini diatur oleh admin pusat':'Aturan telepon untuk semua daerah')+`<div class="card"><div class="fg"><label class="mu">Jatah per bulan Hijriyah (kali)<input id="cq" type="number" min="1" value="${c.quota}" ${ro}></label><label class="mu">Batas durasi (menit)<input id="cl" type="number" min="1" value="${c.limit_min}" ${ro}></label><label class="mu">Peringatan pada menit ke<input id="cw" type="number" min="1" value="${c.warn_min}" ${ro}></label><label class="mu">Koreksi tanggal Hijriyah<select id="ch" ${ro}>${[-1,0,1].map(v=>`<option value="${v}" ${(c.hijri_offset||0)===v?'selected':''}>${v>0?'+'+v:v} hari</option>`).join('')}</select></label></div>
+ $('#main').innerHTML=hd('Pengaturan',ro?'Aturan ini diatur oleh admin pusat':'Aturan telepon untuk semua daerah')+`<div class="card"><div class="fg"><label class="mu">Jatah per bulan Hijriyah (kali)<input id="cq" type="number" min="1" value="${c.quota}" ${ro}></label><label class="mu">Batas durasi (menit)<input id="cl" type="number" min="1" value="${c.limit_min}" ${ro}></label><label class="mu">Peringatan pada menit ke<input id="cw" type="number" min="1" value="${c.warn_min}" ${ro}></label><label class="mu">Koreksi tanggal Hijriyah<select id="ch" ${ro}>${[-1,0,1].map(v=>`<option value="${v}" ${(c.hijri_offset||0)===v?'selected':''}>${v>0?'+'+v:v} hari</option>`).join('')}</select></label><label class="mu">Volume dimatikan setelah lewat batas (menit, 0 = nonaktif)<input id="ce" type="number" min="0" value="${c.enforce_min==null?5:c.enforce_min}" ${ro}></label></div>
  <div class="row" style="margin-top:16px">${ro?'':'<button onclick="saveCfg()">Simpan pengaturan</button>'}<button class="sec" onclick="logout()">${ic('out')}Keluar</button></div></div>
  <h3 class="sec-t">Log audit</h3><div class="sc"><table><tr><th>Waktu</th><th>Oleh</th><th>Aksi</th><th>Detail</th></tr>${(au||[]).map(a=>`<tr><td>${tgl(a.at)}</td><td>${esc(un(a.admin_email))}</td><td><span class="tag">${esc(a.aksi)}</span></td><td>${esc(a.detail)}</td></tr>`).join('')||'<tr><td class="mu">Belum ada aktivitas</td></tr>'}</table></div>`}
-async function saveCfg(){const v={quota:+$('#cq').value,limit_min:+$('#cl').value,warn_min:+$('#cw').value,hijri_offset:+$('#ch').value};if(v.warn_min>=v.limit_min)return toast('Peringatan harus lebih kecil dari batas');
+async function saveCfg(){const v={quota:+$('#cq').value,limit_min:+$('#cl').value,warn_min:+$('#cw').value,hijri_offset:+$('#ch').value,enforce_min:Math.max(0,+$('#ce').value||0)};if(v.warn_min>=v.limit_min)return toast('Peringatan harus lebih kecil dari batas');
  const {error}=await sb.from('settings').update(v).eq('id',1);if(error)return toast(error.message);Object.assign(S.cfg,v);await audit('UBAH PENGATURAN',JSON.stringify(v));toast('Pengaturan tersimpan')}
 
 /* ---------- AKUN LOGIN ---------- */
@@ -461,9 +461,9 @@ async function xlsx(name,sheets){await loadXL();const wb=new ExcelJS.Workbook();
 function toggleTheme(){const n=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=n;try{localStorage.setItem('kada-theme',n)}catch(e){}}
 async function refresh(){toast('Memuat ulang data…','i');try{await loadBase()}catch(e){}render()}
 const lisan=n=>String(n||'').replace(/['’`]/g,'').replace(/\b(MOH|MOCH|MUH|MHD|M)\.?(?=\s)/gi,'Muhammad').replace(/\bABD\.?(?=\s)/gi,'Abdul').replace(/\./g,' ').replace(/\s+/g,' ').trim().toLowerCase().split(' ').filter(Boolean).slice(0,3).map(w=>w[0].toUpperCase()+w.slice(1)).join(' ')||'santri';
-const msgFor=c=>`Saudara ${lisan(c&&c.santri&&c.santri.nama)}, waktu telepon Anda sudah habis, silahkan akhiri telfon, terima kasih.`;
-function testAlarm(){const t=msgFor({santri:{nama:'Muhammad. '}});
- if(window.KadaNative){try{KadaNative.schedule(String(Date.now()+10000),t,'Nama: Muhammad. (tes)\nHP: tes alarm dari admin\nBatas: 0 menit')}catch(e){toast('Gagal: '+e,'e')}return}
+const msgFor=c=>`Saudara ${lisan(c&&c.santri&&c.santri.nama)}, waktu telepon Anda sudah habis, Silahkan akhiri telepon, terima kasih.`;
+function testAlarm(){const t=msgFor({santri:{nama:'Muhammad.'}});
+ if(window.KadaNative){try{KadaNative.schedule(String(Date.now()+10000),t,'Nama: Muhammad. (tes)\nHP: tes alarm dari admin\nBatas: 0 menit','0')}catch(e){toast('Gagal: '+e,'e')}return}
  toast('Tes alarm: bunyi, getar, lalu suara','i');try{beep(3)}catch(e){}try{navigator.vibrate&&navigator.vibrate([500,300,500,300,500])}catch(e){}
  setTimeout(()=>{try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='id-ID';if(VO)u.voice=VO;speechSynthesis.speak(u)}catch(e){}},2300)}
 function stopAlarm(){try{window.KadaNative&&KadaNative.cancel()}catch(e){}try{speechSynthesis.cancel();navigator.vibrate&&navigator.vibrate(0)}catch(e){}toast('Alarm dihentikan','s')}
@@ -475,6 +475,7 @@ async function lockHp(id,on){const p=S.phones.find(x=>x.id===id);const {error}=a
  if(error)return toast('Gagal mengubah kunci: '+error.message,'e');p.locked=on;await audit(on?'KUNCI HP':'BUKA KUNCI HP',p.nama);toast(on?`${p.nama} dikunci. Keluar dari aplikasi di HP itu kini meminta password.`:`${p.nama} dibuka kuncinya.`,'s');dash()}
 function runCmd(p){if(!p||!p.cmd||!p.cmd_at)return;const at=+new Date(p.cmd_at);if(S.cmdAt===at)return;S.cmdAt=at;if(Math.abs(now()-at)>30000)return;if(p.cmd==='test')testAlarm();else if(p.cmd==='stop')stopAlarm()}
 function applyLock(p){const on=!!(p&&p.locked);document.body.dataset.locked=on?1:0;if(S.lk!==on){S.lk=on;try{window.KadaNative&&KadaNative.lock(on)}catch(e){}}}
+const enfSec=()=>{const m=S.cfg.enforce_min;return (m==null?5:+m)*60};
 const detailFor=c=>[`Nama: ${c.santri.nama}`,`Kamar: ${c.santri.kamar}`,c.nomor?`Nomor: ${c.nomor}`:'',`Dengan: ${c.tujuan}`,`HP: ${(c.phones&&c.phones.nama)||''}`,`Batas: ${Math.round(c.limit_sec/60)} menit`].filter(Boolean).join('\n');
 /* notifikasi admin di atas layar (aplikasi Android: native; browser: Notification API + service worker) */
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').then(r=>{S.sw=r}).catch(()=>{});
