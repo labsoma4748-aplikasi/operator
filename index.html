@@ -475,8 +475,8 @@ function toggleTheme(){const n=document.documentElement.dataset.theme==='dark'?'
 async function refresh(){toast('Memuat ulang data…','i');try{await loadBase()}catch(e){}render()}
 const lisan=n=>String(n||'').replace(/['’`]/g,'').replace(/\b(MOH|MOCH|MUH|MHD|M)\.?(?=\s)/gi,'Muhammad').replace(/\bABD\.?(?=\s)/gi,'Abdul').replace(/\./g,' ').replace(/\s+/g,' ').trim().toLowerCase().split(' ').filter(Boolean).slice(0,3).map(w=>w[0].toUpperCase()+w.slice(1)).join(' ')||'santri';
 const msgFor=c=>`Saudara ${lisan(c&&c.santri&&c.santri.nama)}, waktu telepon Anda sudah habis, Silahkan akhiri panggilan, terima kasih.`;
-function testAlarm(){const t=msgFor({santri:{nama:'MOH. CONTOH'}});
- if(window.KadaNative){try{KadaNative.schedule(String(Date.now()+10000),t,'Nama: MOH. CONTOH (tes)\nHP: tes alarm dari admin\nBatas: 0 menit','0')}catch(e){toast('Gagal: '+e,'e')}return}
+function testAlarm(){const t=msgFor({santri:{nama:'MOH.'}});
+ if(window.KadaNative){try{KadaNative.schedule(String(Date.now()+10000),t,'Nama: MOH. (tes)\nHP: tes alarm dari admin\nBatas: 0 menit','0')}catch(e){toast('Gagal: '+e,'e')}return}
  toast('Tes alarm: bunyi, getar, lalu suara','i');try{beep(3)}catch(e){}try{navigator.vibrate&&navigator.vibrate([500,300,500,300,500])}catch(e){}
  setTimeout(()=>{try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='id-ID';if(VO)u.voice=VO;speechSynthesis.speak(u)}catch(e){}},2300)}
 function stopAlarm(){try{window.KadaNative&&KadaNative.cancel()}catch(e){}try{speechSynthesis.cancel();navigator.vibrate&&navigator.vibrate(0)}catch(e){}toast('Alarm dihentikan','s')}
