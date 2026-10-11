@@ -126,7 +126,7 @@ function dlg(o){return new Promise(res=>{const F=o.fields||[],el=document.create
 const ask=(title,msg,o)=>dlg({title,msg,...(o||{})});
 let ac;function beep(n=3){try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();if(ac.state==='suspended')ac.resume();for(let i=0;i<n;i++){const o=ac.createOscillator(),g=ac.createGain();o.frequency.value=880;o.connect(g);g.connect(ac.destination);const t=ac.currentTime+i*.45;g.gain.setValueAtTime(.4,t);g.gain.setValueAtTime(0,t+.3);o.start(t);o.stop(t+.32)}}catch(e){}}
 async function audit(aksi,detail){await sb.from('audit').insert({admin_email:S.user.email,aksi,detail})}
-function csv(rows,name){const c=rows.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+c],{type:'text/csv'}));a.download=name;a.click()}
+function csv(rows,name){const c=rows.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\n');return saveBlob(name,'text/csv',new TextEncoder().encode('\ufeff'+c))}
 
 /* ---------- LOGIN ---------- */
 function loginView(){$('#app').innerHTML=`<div class="lg"><div class="lgL"><div class="brand"><span class="logo">${ic('phone')}</span><div><b>Operator</b><small>Telepon Santri</small></div></div>
@@ -137,7 +137,7 @@ function loginView(){$('#app').innerHTML=`<div class="lg"><div class="lgL"><div 
 async function login(){const u=$('#u').value.trim(),email=mail(u);
  const {error}=await sb.auth.signInWithPassword({email,password:$('#p').value});
  if(error){$('#err').textContent=/confirm/i.test(error.message)?'Akun belum dikonfirmasi di Supabase':'Username atau password salah';return}S.armed=true;arm();wake();beep(1);boot()}
-async function logout(){await sb.auth.signOut();location.reload()}
+async function logout(){try{if(window.KadaNative){KadaNative.watchCalls&&KadaNative.watchCalls('[]');KadaNative.keepAlive&&KadaNative.keepAlive(false)}}catch(e){}await sb.auth.signOut();location.reload()}
 
 /* ---------- BOOT & DATA ---------- */
 async function boot(){
@@ -152,7 +152,7 @@ async function boot(){
  if(S.role==='terminal'){try{window.KadaNative&&(KadaNative.keepAlive(true),KadaNative.setup())}catch(e){}const p=myPhone();if(p){const ping=async()=>{try{const {error,count}=await sb.from('phones').update({last_seen:new Date(now()).toISOString()},{count:'exact'}).eq('id',p.id);S.ping={at:Date.now(),ok:!error&&count>0,msg:error?error.message:(count>0?'':'HP tidak ditemukan — periksa daerah HP di menu Akun')}}catch(e){S.ping={at:Date.now(),ok:false,msg:String(e.message||e)}}};ping();setInterval(ping,20000);window.addEventListener('online',ping);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')ping()});
   S.pch=sb.channel('hp-presence',{config:{presence:{key:String(p.id)}}});S.pch.subscribe(st=>{if(st==='SUBSCRIBED')S.pch.track({at:Date.now()})});
   S.dch=sb.channel('hp-dial-'+p.id).on('postgres_changes',{event:'UPDATE',schema:'public',table:'phones',filter:'id=eq.'+p.id},pl=>{Object.assign(p,pl.new);runCmd(p);const g=sig();if(g!==S.sig){S.sig=g;render()}}).subscribe()}}
- else{const ch=sb.channel('hp-presence');ch.on('presence',{event:'sync'},()=>{S.on=new Set(Object.keys(ch.presenceState()));const g=sig();if(g!==S.sig){S.sig=g;if(S.tab==='dash')render()}}).subscribe();
+ else{try{window.KadaNative&&(KadaNative.keepAlive(true),KadaNative.setupAdmin&&KadaNative.setupAdmin())}catch(e){}const ch=sb.channel('hp-presence');ch.on('presence',{event:'sync'},()=>{S.on=new Set(Object.keys(ch.presenceState()));const g=sig();if(g!==S.sig){S.sig=g;if(S.tab==='dash')render()}}).subscribe();
   sb.channel('hp-live').on('postgres_changes',{event:'UPDATE',schema:'public',table:'phones'},pl=>{const x=S.phones.find(q=>q.id===pl.new.id);if(x){Object.assign(x,pl.new);const g=sig();if(g!==S.sig){S.sig=g;if(S.tab==='dash')render()}}}).subscribe()}
  render()}
 const myPhone=()=>S.phones.find(p=>p.email===S.user.email);
@@ -163,7 +163,7 @@ const isOn=p=>(S.on&&S.on.has(String(p.id)))||!!(p.last_seen&&now()-new Date(p.l
 const sig=()=>S.active.map(c=>c.id+c.status).join()+'|'+S.phones.map(p=>isOn(p)?1:0).join()+'|'+(S.role==='terminal'&&myPhone()?(myPhone().dial_nomor||'')+(myPhone().locked?'L':''):'');
 /* Layar hanya digambar ulang jika status HP benar-benar berubah, dan hanya di Dashboard/HP terminal. Tab lain & isian form tidak tersentuh. */
 async function refreshActive(quiet){
- const {data}=await sb.from('calls').select('*,santri(nama,kamar),phones(nama)').eq('status','aktif');if(data)S.active=data;
+ const {data}=await sb.from('calls').select('*,santri(nama,kamar),phones(nama)').eq('status','aktif');if(data)S.active=data;syncAdminAlerts();
  if(S.role!=='terminal'){const {data:p}=await sb.from('phones').select('*').eq('aktif',true).order('id');if(p)S.phones=p}
  if(S.role==='terminal'){const mp=myPhone();if(mp){const {data:r}=await sb.from('phones').select('*').eq('id',mp.id).maybeSingle();if(r){Object.assign(mp,r);runCmd(mp)}}}
  const g=sig();if(quiet){S.sig=g;return}
@@ -315,7 +315,7 @@ const KOL=['id_santri','nama','kamar','kelas','tingkat','alamat','no_hp'];
 let SQ={q:'',p:0,n:0,rows:[]},PS=50,sqt;
 function santriTab(){SQ.q='';SQ.p=0;
  $('#main').innerHTML=hd('Data santri',S.role==='pusat'?'Semua daerah':'Daerah '+S.daerah,`<button onclick="santriForm()">${ic('plus')}Tambah santri</button>`)+
- `<details class="card" style="margin-bottom:14px"><summary style="cursor:pointer;font-weight:600">Impor data santri (CSV)</summary><p class="mu">Baris pertama berisi nama kolom: ${KOL.join(', ')}. Kamar berformat huruf daerah dan nomor, contoh A-01. ID yang sudah ada diperbarui, bukan digandakan.${S.role==='pusat'?'':' Baris di luar daerah '+S.daerah+' dilewati.'}</p><div class="row"><input type="file" id="fi" accept=".csv,.txt"><button class="sec" onclick="tpl()">Unduh template</button></div></details>
+ `<details class="card" style="margin-bottom:14px"><summary style="cursor:pointer;font-weight:600">Impor data santri (CSV)</summary><p class="mu">Baris pertama berisi nama kolom: ${KOL.join(', ')}. Kamar berformat huruf daerah dan nomor, contoh A-01. ID yang sudah ada diperbarui, bukan digandakan.${S.role==='pusat'?'':' Baris di luar daerah '+S.daerah+' dilewati.'}</p><div class="row"><input type="file" id="fi" accept=".csv,.txt,.xlsx"><button class="sec" onclick="tpl()">Unduh template</button></div></details>
  <input id="sq" placeholder="Cari ID, nama, atau kamar…"><div class="sc" style="margin-top:12px"><table id="st"></table></div><div class="row" id="pg" style="margin-top:12px;justify-content:space-between"></div>`;
  $('#fi').onchange=impor;$('#sq').oninput=e=>{clearTimeout(sqt);sqt=setTimeout(()=>{SQ.q=e.target.value;SQ.p=0;loadSantriPage()},250)};loadSantriPage()}
 async function loadSantriPage(){const v=SQ.q.trim().replace(/[%,()]/g,' ');
@@ -340,8 +340,8 @@ function parseCSV(t){t=t.replace(/^\ufeff/,'');const l0=t.split('\n')[0];const d
   if(q){if(ch=='"'){if(t[i+1]=='"'){c+='"';i++}else q=false}else c+=ch}
   else if(ch=='"')q=true;else if(ch==d){r.push(c);c=''}else if(ch=='\n'||ch=='\r'){if(ch=='\r'&&t[i+1]=='\n')i++;r.push(c);rows.push(r);r=[];c=''}else c+=ch}
  if(c||r.length){r.push(c);rows.push(r)}return rows.filter(r=>r.some(x=>x.trim()))}
-async function impor(e){const f=e.target.files[0];if(!f)return;const rows=parseCSV(await f.text());if(rows.length<2)return toast('File kosong');
- const h=rows[0].map(x=>x.trim().toLowerCase().replace(/[\s-]+/g,'_')),ix=k=>h.indexOf(k);
+async function impor(e){const f=e.target.files[0];if(!f)return;e.target.value='';toast('Membaca file…','i');let rows;try{rows=/\.xlsx$/i.test(f.name)?await readXlsx(f):parseCSV(await f.text())}catch(x){return toast('Gagal membaca file: '+(x.message||x),'e')}if(rows.length<2)return toast('File kosong');
+ const h=rows[0].map(x=>{const k=String(x||'').trim().toLowerCase().replace(/[\s.\-]+/g,'_').replace(/^_+|_+$/g,'');return IMPAL[k]||k}),ix=k=>h.indexOf(k);
  if(ix('id_santri')<0||ix('nama')<0)return toast('Baris pertama harus memuat kolom id_santri dan nama');
  const m={};let skip=0;rows.slice(1).forEach(r=>{const o={aktif:true};KOL.forEach(k=>o[k]=ix(k)<0?'':(r[ix(k)]||'').trim());o.kamar=o.kamar.toUpperCase();
   if(!o.id_santri||!o.nama)return;if(S.role!=='pusat'&&!o.kamar.startsWith(S.daerah)){skip++;return}m[o.id_santri]=o});
@@ -350,7 +350,7 @@ async function impor(e){const f=e.target.files[0];if(!f)return;const rows=parseC
  const ch=[];for(let i=0;i<list.length;i+=500)ch.push(list.slice(i,i+500));
  for(let i=0;i<ch.length;i+=4){const rs=await Promise.all(ch.slice(i,i+4).map(c=>sb.from('santri').upsert(c,{onConflict:'id_santri'})));const er=rs.find(r=>r.error);if(er)return toast('Gagal impor: '+er.error.message)}
  await audit('IMPOR SANTRI',list.length+' data');toast(list.length+' santri diimpor');santriTab()}
-const tpl=()=>csv([KOL,['1001','Ahmad Fauzan','12','7A','Tsanawiyah','Surabaya','08123456789']],'template-santri.csv');
+async function tpl(){try{await xlsx('template-santri.xlsx',[{name:'Santri',head:KOL,rows:[['1001','Ahmad Fauzan','A-12','7A','Tsanawiyah','Surabaya','+62 812-3456-7890']],w:[14,30,10,10,14,28,24]}])}catch(e){toast('Gagal membuat template: '+(e.message||e),'e')}}
 async function delS(id){if(!await ask('Nonaktifkan santri?','Riwayat telepon santri ini tetap tersimpan.',{ok:'Nonaktifkan',danger:true}))return;const {error}=await sb.from('santri').update({aktif:false}).eq('id',id);if(error)return toast(error.message);await audit('NONAKTIF SANTRI','id '+id);loadSantriPage()}
 
 /* ---------- RIWAYAT ---------- */
@@ -389,7 +389,7 @@ async function exportR(){toast('Menyiapkan file Excel…','i');try{let all=[],f=
   return [i+1,fmtH(r.started_at),jam(r.started_at),r.ended_at&&r.status!=='batal'?jam(r.ended_at):'',m?fmt(m*60):'',m?+m.toFixed(2):'',Math.round(r.limit_sec/60),a.id_santri||'',a.nama||'',a.kamar||'',a.daerah||'',a.tingkat||'',a.kelas||'',r.tujuan||'',r.nomor||'',(r.phones&&r.phones.nama)||'',SM[r.status]||r.status,r.luar_jatah?'Ya':'Tidak',r.alasan||'',new Date(r.started_at)]});
  await xlsx('riwayat-telepon_'+fmtH(now()).replace(/ /g,'-')+'.xlsx',[{name:'Riwayat Telepon',title:['Riwayat Telepon Santri','Dicetak: '+hariN(now())+', '+fmtH(now())+' · Periode: '+(d?fmtH(d[0])+' s/d '+fmtH(d[1]-1):'Semua tanggal'),`Total panggilan: ${all.length} · Total durasi: ${Math.round(tm)} menit`],
   head:['No','Tanggal (Hijriyah)','Jam mulai','Jam selesai','Durasi (mm:ss)','Durasi (menit)','Batas (menit)','ID santri','Nama santri','Kamar','Daerah','Tingkat','Kelas','Yang ditelepon','Nomor dihubungi','HP','Status','Luar jatah','Alasan','Waktu asli (Masehi)'],
-  rows,w:[6,22,11,11,14,13,12,13,28,9,9,14,10,15,20,12,12,10,28,19],fmt:{19:'yyyy-mm-dd hh:mm'}}]);toast('File Excel siap diunduh ('+all.length+' baris)','s')}catch(e){toast('Gagal membuat Excel: '+(e.message||e),'e')}}
+  rows,w:[6,22,11,11,14,13,12,13,28,9,9,14,10,15,20,12,12,10,28,19],fmt:{19:'yyyy-mm-dd hh:mm'}}]);void 0}catch(e){toast('Gagal membuat Excel: '+(e.message||e),'e')}}
 async function koreksi(id){const r=RR.find(x=>x.id===id);const v=await ask('Koreksi durasi','Masukkan durasi yang benar beserta alasannya.',{ok:'Simpan',fields:[{label:'Durasi yang benar (menit, boleh desimal)',ph:'contoh: 4.5',req:1},{label:'Alasan koreksi',ph:'wajib diisi',req:1}]});if(!v)return;const m=v[0].replace(',','.'),a=v[1];if(isNaN(m)||+m<0)return toast('Durasi tidak valid');
  const {error}=await sb.from('calls').update({ended_at:new Date(new Date(r.started_at).getTime()+m*60000).toISOString()}).eq('id',id);if(error)return toast(error.message);await audit('KOREKSI',`${r.santri.nama}: durasi → ${m} menit. Alasan: ${a}`);loadR()}
 
@@ -413,7 +413,7 @@ async function exportK(){toast('Menyiapkan file Excel…','i');try{const [a0,b0]
  const sum=k=>RK.reduce((t,r)=>t+ +r[k],0),head=['Rekap Telepon Santri','Periode: '+per+' · Jatah: '+Q+' kali/bulan','Dicetak: '+hariN(now())+', '+fmtH(now())];
  await xlsx('rekap-telepon_'+per.replace(/ /g,'-')+'.xlsx',[{name:'Rekap Kamar',title:head,head:['Kamar','Jumlah santri','Jatah penuh','Sebagian','Belum telepon'],rows:RK.map(r=>[r.kamar,+r.jumlah,+r.penuh,+r.sebagian,+r.belum]),total:['TOTAL',sum('jumlah'),sum('penuh'),sum('sebagian'),sum('belum')],w:[14,15,14,12,15]},
   {name:'Detail Santri',title:head,head:['No','ID santri','Nama','Kamar','Daerah','Tingkat','Kelas','Nomor HP','Telepon (dalam jatah)','Telepon (luar jatah)','Total menit','Status'],rows:det,w:[6,13,30,10,9,14,10,22,14,14,12,15]}]);
- toast('File Excel siap diunduh','s')}catch(e){toast('Gagal membuat Excel: '+(e.message||e),'e')}}
+ void 0}catch(e){toast('Gagal membuat Excel: '+(e.message||e),'e')}}
 
 /* ---------- PENGATURAN ---------- */
 async function setTab(){const {data:au}=await sb.from('audit').select('*').order('at',{ascending:false}).limit(30);const c=S.cfg,ro=S.role!=='pusat'?'disabled':'';
@@ -421,7 +421,7 @@ async function setTab(){const {data:au}=await sb.from('audit').select('*').order
  <div class="row" style="margin-top:16px">${ro?'':'<button onclick="saveCfg()">Simpan pengaturan</button>'}<button class="sec" onclick="logout()">${ic('out')}Keluar</button></div></div>
  <h3 class="sec-t">Log audit</h3><div class="sc"><table><tr><th>Waktu</th><th>Oleh</th><th>Aksi</th><th>Detail</th></tr>${(au||[]).map(a=>`<tr><td>${tgl(a.at)}</td><td>${esc(un(a.admin_email))}</td><td><span class="tag">${esc(a.aksi)}</span></td><td>${esc(a.detail)}</td></tr>`).join('')||'<tr><td class="mu">Belum ada aktivitas</td></tr>'}</table></div>`}
 async function saveCfg(){const v={quota:+$('#cq').value,limit_min:+$('#cl').value,warn_min:+$('#cw').value,hijri_offset:+$('#ch').value,enforce_min:Math.max(0,+$('#ce').value||0)};if(v.warn_min>=v.limit_min)return toast('Peringatan harus lebih kecil dari batas');
- const {error}=await sb.from('settings').update(v).eq('id',1);if(error)return toast(error.message);Object.assign(S.cfg,v);await audit('UBAH PENGATURAN',JSON.stringify(v));toast('Pengaturan tersimpan')}
+ const {error}=await sb.from('settings').update(v).eq('id',1);if(error)return toast(error.message);Object.assign(S.cfg,v);S.aj='';syncAdminAlerts();await audit('UBAH PENGATURAN',JSON.stringify(v));toast('Pengaturan tersimpan')}
 
 /* ---------- AKUN LOGIN ---------- */
 let AK=[];const DR='ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
@@ -468,13 +468,13 @@ async function xlsx(name,sheets){await loadXL();const wb=new ExcelJS.Workbook();
   if(sh.total){const tr=ws.addRow(sh.total);tr.font={bold:true};tr.eachCell(c=>{c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE4EBE6'}}})}
   sh.w.forEach((w,i)=>{const col=ws.getColumn(i+1);col.width=w;if(sh.fmt&&sh.fmt[i])col.numFmt=sh.fmt[i]});
   ws.autoFilter={from:{row:hr.number,column:1},to:{row:hr.number,column:sh.head.length}};ws.views=[{state:'frozen',ySplit:hr.number}]}
- const buf=await wb.xlsx.writeBuffer(),a=document.createElement('a');a.href=URL.createObjectURL(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000)}
+ const buf=await wb.xlsx.writeBuffer();await saveBlob(name,'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',buf)}
 /* tema, muat ulang, kalimat suara */
 (function(){let t='light';try{t=localStorage.getItem('kada-theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')}catch(e){}document.documentElement.dataset.theme=t})();
 function toggleTheme(){const n=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=n;try{localStorage.setItem('kada-theme',n)}catch(e){}}
 async function refresh(){toast('Memuat ulang data…','i');try{await loadBase()}catch(e){}render()}
 const lisan=n=>String(n||'').replace(/['’`]/g,'').replace(/\b(MOH|MOCH|MUH|MHD|M)\.?(?=\s)/gi,'Muhammad').replace(/\bABD\.?(?=\s)/gi,'Abdul').replace(/\./g,' ').replace(/\s+/g,' ').trim().toLowerCase().split(' ').filter(Boolean).slice(0,3).map(w=>w[0].toUpperCase()+w.slice(1)).join(' ')||'santri';
-const msgFor=c=>`Saudara ${lisan(c&&c.santri&&c.santri.nama)}, waktu telepon Anda sudah habis, terima kasih.`;
+const msgFor=c=>`Saudara ${lisan(c&&c.santri&&c.santri.nama)}, waktu telepon Anda sudah habis, Silahkan akhiri panggilan, terima kasih.`;
 function testAlarm(){const t=msgFor({santri:{nama:'MOH. CONTOH'}});
  if(window.KadaNative){try{KadaNative.schedule(String(Date.now()+10000),t,'Nama: MOH. CONTOH (tes)\nHP: tes alarm dari admin\nBatas: 0 menit','0')}catch(e){toast('Gagal: '+e,'e')}return}
  toast('Tes alarm: bunyi, getar, lalu suara','i');try{beep(3)}catch(e){}try{navigator.vibrate&&navigator.vibrate([500,300,500,300,500])}catch(e){}
@@ -489,16 +489,35 @@ async function lockHp(id,on){const p=S.phones.find(x=>x.id===id);const {error}=a
 function runCmd(p){if(!p||!p.cmd||!p.cmd_at)return;const at=+new Date(p.cmd_at);if(S.cmdAt===at)return;S.cmdAt=at;if(Math.abs(now()-at)>30000)return;if(p.cmd==='test')testAlarm();else if(p.cmd==='stop')stopAlarm()}
 function applyLock(p){const on=!!(p&&p.locked);document.body.dataset.locked=on?1:0;if(S.lk!==on){S.lk=on;try{window.KadaNative&&KadaNative.lock(on)}catch(e){}}}
 const enfSec=()=>{const m=S.cfg.enforce_min;return (m==null?5:+m)*60};
+/* Admin (aplikasi Android): jadwalkan notifikasi "hampir batas / habis / volume dimatikan" ke alarm sistem,
+   sehingga tetap muncul di atas layar saat berpindah aplikasi atau layar terkunci */
+function syncAdminAlerts(){if(!window.KadaNative||!KadaNative.watchCalls||S.role==='terminal'||!S.role)return;
+ const enf=enfSec(),wm=(S.cfg.warn_min||4)*60,out=[];
+ for(const c of S.active){const st=new Date(c.started_at).getTime()-S.off,hp=(c.phones&&c.phones.nama)||'HP',nm=c.santri.nama,ls=c.limit_sec;
+  if(wm<ls)out.push({code:c.id*3,at:st+wm*1000,t:'Hampir batas',b:`${hp} · ${nm} hampir mencapai batas waktu`});
+  out.push({code:c.id*3+1,at:st+ls*1000,t:'Waktu telepon habis',b:`${hp} · ${nm} melewati batas ${fmt(ls)}. Segera selesaikan panggilan.`});
+  if(enf>0)out.push({code:c.id*3+2,at:st+(ls+enf)*1000,t:'Volume HP dimatikan',b:`${hp} · ${nm} belum mengakhiri telepon ${enf/60} menit setelah batas. Volume dimatikan sampai Anda menekan Selesai.`})}
+ const j=JSON.stringify(out);if(j!==S.aj){S.aj=j;try{KadaNative.watchCalls(j)}catch(e){}}}
 const detailFor=c=>[`Nama: ${c.santri.nama}`,`Kamar: ${c.santri.kamar}`,c.nomor?`Nomor: ${c.nomor}`:'',`Dengan: ${c.tujuan}`,`HP: ${(c.phones&&c.phones.nama)||''}`,`Batas: ${Math.round(c.limit_sec/60)} menit`].filter(Boolean).join('\n');
 /* notifikasi admin di atas layar (aplikasi Android: native; browser: Notification API + service worker) */
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').then(r=>{S.sw=r}).catch(()=>{});
-function notif(title,body,tag){try{if(window.KadaNative&&KadaNative.pushNotif){KadaNative.pushNotif(title,body);return}
+function notif(title,body,tag){try{if(window.KadaNative&&KadaNative.pushNotif){if(!KadaNative.watchCalls)KadaNative.pushNotif(title,body);return}
  if(!window.Notification||Notification.permission!=='granted')return;const o={body,tag:tag||'kada',renotify:true,requireInteraction:true,vibrate:[200,100,200]};
  if(S.sw&&S.sw.showNotification)S.sw.showNotification(title,o);else if(navigator.serviceWorker)navigator.serviceWorker.ready.then(x=>x.showNotification(title,o));else new Notification(title,o)}catch(e){}}
 function notifBanner(){if(window.KadaNative||!window.Notification||Notification.permission!=='default'||document.getElementById('nb'))return;const b=document.createElement('div');b.id='nb';
  b.innerHTML='<span>🔔 Aktifkan notifikasi agar peringatan muncul di atas layar</span><button id="nbo">Aktifkan</button><button class="sec sm" id="nbx">Nanti</button>';document.body.appendChild(b);
  document.getElementById('nbo').onclick=()=>Notification.requestPermission().then(()=>b.remove());document.getElementById('nbx').onclick=()=>b.remove()}
 setTimeout(()=>{if(S.role&&S.role!=='terminal')notifBanner()},4000);
+/* simpan file: di aplikasi Android lewat jembatan native (folder Download + menu bagikan); di browser lewat unduhan biasa */
+async function saveBlob(name,mime,buf){
+ if(window.KadaNative&&KadaNative.saveBegin){const u8=buf instanceof Uint8Array?buf:new Uint8Array(buf),CH=3*170000;KadaNative.saveBegin(name,mime);
+  for(let i=0;i<u8.length;i+=CH){const part=u8.subarray(i,i+CH);let bin='';for(let k=0;k<part.length;k+=8192)bin+=String.fromCharCode.apply(null,part.subarray(k,k+8192));KadaNative.saveChunk(btoa(bin))}
+  const r=String(KadaNative.saveEnd());if(r.indexOf('GAGAL')===0)throw new Error(r.slice(6));toast(r.indexOf('OK:')===0?'Tersimpan di folder Download: '+name+'. Pilih aplikasi untuk membuka atau mengirim.':r,'s');return r}
+ const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([buf],{type:mime}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000);toast('File '+name+' diunduh','s');return 'OK:'+name}
+/* impor dari Excel (.xlsx) + nama kolom yang dikenali */
+const IMPAL={id:'id_santri',nis:'id_santri',no_induk:'id_santri',nomor_induk:'id_santri',nama_santri:'nama',nomor_hp:'no_hp',hp:'no_hp',no_telp:'no_hp',no_telepon:'no_hp',telepon:'no_hp',no_wa:'no_hp',wa:'no_hp',nomor_wali:'no_hp',no_wali:'no_hp',nomor_wa:'no_hp',jenjang:'tingkat'};
+async function readXlsx(f){await loadXL();const wb=new ExcelJS.Workbook();await wb.xlsx.load(await f.arrayBuffer());const ws=wb.worksheets[0];if(!ws)return [];const rows=[],nc=ws.columnCount;
+ ws.eachRow({includeEmpty:false},row=>{const a=[];for(let c=1;c<=nc;c++){const t=row.getCell(c).text;a.push(String(t==null?'':t).trim())}rows.push(a)});return rows.filter(r=>r.some(x=>x))}
 boot();
 </script>
 </body>
